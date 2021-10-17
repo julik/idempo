@@ -31,7 +31,7 @@ class Idempo::ResponseStore
     now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     items_to_delete = remove_lower_than(@expiries, now, &:expire_at)
     items_to_delete.each do |expiry_handle|
-      @values.delete(expiry_handle.key) if @values[expiry_handle.key].expire_at < now
+      @values.delete(expiry_handle.key) if @values[expiry_handle.key] && @values[expiry_handle.key].expire_at < now
     end
   end
 

@@ -1,16 +1,29 @@
 class Idempo::MemoryBackend
   def initialize
     require 'set'
-    require 'thread'
     require_relative 'response_store'
 
     @requests_in_flight_mutex = Mutex.new
     @in_progress = Set.new
     @store_mutex = Mutex.new
-    @store = Idempo::ResponseStore.new
+    @response_store = Idempo::ResponseStore.new
   end
 
-  def with_lock(request_key)
+  class Store < Struct.new(:store_mutex, :response_store, :key, keyword_init: true)
+    def lookup
+      store_mutex.synchronize do
+        response_store.lookup(key)
+      end
+    end
+
+    def store(data:, ttl:)
+      store_mutex.synchronize do
+        response_store.save(key, data, ttl)
+      end
+    end
+  end
+
+  def with_idempotency_key(request_key)
     did_insert = @requests_in_flight_mutex.synchronize do
       if @in_progress.include?(request_key)
         false
@@ -22,23 +35,11 @@ class Idempo::MemoryBackend
 
     raise Idempo::ConcurrentRequest unless did_insert
 
+    store = Store.new(store_mutex: @store_mutex, response_store: @response_store, key: request_key)
     begin
-      yield
+      yield(store)
     ensure
       @requests_in_flight_mutex.synchronize { @in_progress.delete(request_key) }
-    end
-  end
-
-  # @return [String] binary data with serialized response
-  def lookup(request_key)
-    @store_mutex.synchronize do
-      @store.lookup(request_key)
-    end
-  end
-
-  def store(request_key, binary_data_with_serialized_response, ttl)
-    @store_mutex.synchronize do
-      @store.save(request_key, binary_data_with_serialized_response, ttl)
     end
   end
 end

@@ -2,15 +2,21 @@
 
 require 'zlib'
 require 'msgpack'
+require 'base64'
+require 'digest'
+require 'json'
 
 require_relative "idempo/version"
 require_relative "idempo/memory_backend"
 require_relative "idempo/redis_backend"
+require_relative "idempo/active_record_backend"
 
 class Idempo
   DEFAULT_TTL = 30
+  SAVED_RESPONSE_BODY_SIZE_LIMIT = 4 * 1024 * 1024
 
   class Error < StandardError; end
+
   class ConcurrentRequest < Error; end
 
   def initialize(app, backend: MemoryBackend.new)
@@ -20,22 +26,24 @@ class Idempo
 
   def call(env)
     req = Rack::Request.new(env)
-    return @app.call(env) if request_idempotent?(req)
-    return @app.call(env) unless idempotency_key_header = extract_idempotency_key_from(req)
+    return @app.call(env) if request_verb_idempotent?(req)
+    return @app.call(env) unless idempotency_key_header = extract_idempotency_key_from(env)
 
     fingerprint = compute_request_fingerprint(req)
     request_key = "#{idempotency_key_header}_#{fingerprint}"
 
-    @backend.with_lock(request_key) do
-      return from_persisted_response(response) if response = @backend.lookup(request_key)
+    @backend.with_idempotency_key(request_key) do |store|
+      if stored_response = store.lookup
+        return from_persisted_response(stored_response)
+      end
 
       status, headers, body = @app.call(env)
 
-      if response_may_be_persisted?(status, headers)
+      if response_may_be_persisted?(status, headers, body)
         expires_in_seconds = (headers.delete('X-Idempo-Persist-For-Seconds') || DEFAULT_TTL).to_i
         # Body is replaced with a cached version since a Rack response body is not rewindable
-        marahsled_response, body = serialize_response(status, headers, body)
-        @backend.save(request_key, marahsled_response, expires_in_seconds)
+        marshaled_response, body = serialize_response(status, headers, body)
+        store.store(data: marshaled_response, ttl: expires_in_seconds)
       end
 
       [status, headers, body]
@@ -50,8 +58,14 @@ class Idempo
     [429, {'Retry-After' => '2', 'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
   end
 
+  private
+
   def from_persisted_response(marshaled_response)
-    MessagePack.unpack(Zlib.inflate(marshaled_response))
+    if marshaled_response[-2..-1] != ':1'
+      raise Error, "Unknown serialization of the marshaled response"
+    else
+      MessagePack.unpack(Zlib.inflate(marshaled_response[0..-3]))
+    end
   end
 
   def serialize_response(status, headers, rack_response_body)
@@ -66,12 +80,29 @@ class Idempo
     end
 
     message_packed_str = MessagePack.pack([status, stringified_headers, body_chunks])
-    [Zlib.deflate(message_packed_str), body_chunks]
+    # Add the version specifier at the end, because slicing a string in Ruby at the end
+    # (when we unserialize our response again) does a realloc, while slicing at the start
+    # does not
+    [Zlib.deflate(message_packed_str) + ":1", body_chunks]
   end
 
-  def response_may_be_persisted?(status, headers)
+  def response_may_be_persisted?(status, headers, body)
     return false if headers.delete('X-Idempo-Policy') == 'no-store'
+    return false unless status_may_be_persisted?(status)
+    return false unless body_size_within_limit?(headers, body)
+    true
+  end
 
+  def body_size_within_limit?(response_headers, body)
+    return response_headers['Content-Length'].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT if response_headers['Content-Length']
+
+    return false unless body.is_a?(Array) # Arbitrary iterable of unknown size
+
+    precomputed_body_size = body.inject(0) { |sum, chunk| sum + chunk.bytesize }
+    precomputed_body_size <= SAVED_RESPONSE_BODY_SIZE_LIMIT
+  end
+
+  def status_may_be_persisted?(status)
     case status
     when 200..400
       true
@@ -86,20 +117,21 @@ class Idempo
 
   def compute_request_fingerprint(req)
     d = Digest::SHA256.new
-    d << req.url
+    d << req.url << "\n"
+    d << req.request_method << "\n"
     while chunk = req.env['rack.input'].read(1024 * 65)
       d << chunk
     end
-    d.hexdigest
+    Base64.strict_encode64(d.digest)
   ensure
     req.env['rack.input'].rewind
   end
 
-  def extract_idempotency_key_from(req)
-    req['HTTP_IDEMPOTENCY_KEY'] || req['HTTP_X_IDEMPOTENCY_KEY']
+  def extract_idempotency_key_from(env)
+    env['HTTP_IDEMPOTENCY_KEY'] || env['HTTP_X_IDEMPOTENCY_KEY']
   end
 
-  def request_idempotent?(request)
+  def request_verb_idempotent?(request)
     request.get? || request.head? || request.options?
   end
 end

@@ -9,6 +9,53 @@ RSpec.describe Idempo do
 
   include Rack::Test::Methods
 
+  describe 'with a very large response body' do
+    let(:app) do
+      the_app = ->(env) {
+        body = Enumerator.new do |yielder|
+          yielder.yield(Random.new.bytes(15))
+          yielder.yield(env['rack.input'].read)
+        end
+        [200, {"X-Foo" => "bar", "Content-Length" => "9999999999999"}, body]
+      }
+      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+    end
+
+    it 'does not provide idempotency for POST requests' do
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      first_response_body = last_response.body
+
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
+    end
+  end
+
+  describe 'with a very large response body which is materialized into an array of strings' do
+    let(:app) do
+      the_app = ->(_env) {
+        big_blob = Random.new.bytes(5 * 1024 * 1024)
+        [200, {"X-Foo" => "bar"}, [Random.new.bytes(13), big_blob]]
+      }
+      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+    end
+
+    it 'does not provide idempotency for POST requests' do
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      first_response_body = last_response.body
+
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
+    end
+  end
+
   describe 'when no double requests are in progress' do
     let(:app) do
       the_app = ->(env) {
