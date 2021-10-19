@@ -1,5 +1,4 @@
-require 'active_record'
-
+# This backend currently only works with mysql2 since it uses advisory locks
 class Idempo::ActiveRecordBackend
   def self.create_table(via_migration)
     via_migration.create_table 'idempo_responses', charset: 'utf8mb4', collation: 'utf8mb4_unicode_ci' do |t|
@@ -24,6 +23,10 @@ class Idempo::ActiveRecordBackend
       end
       true
     end
+  end
+
+  def initialize
+    require 'active_record'
   end
 
   # Allows the model to be defined lazily without having to require active_record when this module gets loaded
