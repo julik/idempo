@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'spec_helper'
 require 'rack/test'
 
@@ -86,6 +87,14 @@ RSpec.describe Idempo do
       expect(last_response).to be_ok
       expect(last_response.headers['X-Foo']).to eq('bar')
       expect(last_response.body).to eq(first_response_body) # response should have been reused
+    end
+
+    it 'responds with a 400 if the idempotency key header is provided but empty' do
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => '""'
+      expect(last_response).to be_bad_request
+
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => ''
+      expect(last_response).to be_bad_request
     end
 
     it 'is not idempotent if the HTTP verb is different' do

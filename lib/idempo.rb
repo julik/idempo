@@ -19,6 +19,8 @@ class Idempo
 
   class ConcurrentRequest < Error; end
 
+  class MalformedIdempotencyKey < Error; end
+
   def initialize(app, backend: MemoryBackend.new)
     @backend = backend
     @app = app
@@ -31,6 +33,7 @@ class Idempo
 
     # The RFC requires that the Idempotency-Key header value is enclosed in quotes
     idempotency_key_header = unquote(idempotency_key_header)
+    raise MalformedIdempotencyKey if idempotency_key_header == ''
 
     fingerprint = compute_request_fingerprint(req)
     request_key = "#{idempotency_key_header}_#{fingerprint}"
@@ -51,6 +54,14 @@ class Idempo
 
       [status, headers, body]
     end
+  rescue MalformedIdempotencyKey
+    res = {
+      ok: false,
+      error: {
+        message: "The Idempotency-Key header provided was empty"
+      }
+    }
+    [400, {'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
   rescue ConcurrentRequest
     res = {
       ok: false,
