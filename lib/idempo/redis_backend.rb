@@ -50,9 +50,11 @@ class Idempo::RedisBackend
       # same workload as we just did. The only sensible thing to do when we encounter this is to actually _skip_ the write.
       keys = [lock_redis_key, response_redis_key]
       argv = [lock_token, data.force_encoding(Encoding::BINARY), ttl_millis]
-      redis_pool.with do |r|
+      outcome_of_save = redis_pool.with do |r|
         Idempo::RedisBackend.eval_or_evalsha(r, SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
       end
+
+      Measurometer.increment_counter('idempo.redis_lock_when_storing', 1, outcome: outcome_of_save)
     end
   end
 
@@ -79,9 +81,10 @@ class Idempo::RedisBackend
       store = Store.new(redis_pool: @redis_pool, lock_redis_key: lock_key, lock_token: token, key: request_key)
       yield(store)
     ensure
-      @redis_pool.with do |r|
+      outcome_of_del = @redis_pool.with do |r|
         Idempo::RedisBackend.eval_or_evalsha(r, DELETE_BY_KEY_AND_VALUE_SCRIPT, keys: [lock_key], argv: [token])
       end
+      Measurometer.increment_counter('idempo_redis_release_lock', 1, outcome: outcome_of_del)
     end
   end
 

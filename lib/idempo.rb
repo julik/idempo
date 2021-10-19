@@ -5,6 +5,7 @@ require 'msgpack'
 require 'base64'
 require 'digest'
 require 'json'
+require 'measurometer'
 
 require_relative "idempo/version"
 require_relative "idempo/memory_backend"
@@ -40,6 +41,7 @@ class Idempo
 
     @backend.with_idempotency_key(request_key) do |store|
       if stored_response = store.lookup
+        Measurometer.increment_counter('idempo.served', 1, via: 'cached')
         return from_persisted_response(stored_response)
       end
 
@@ -52,6 +54,7 @@ class Idempo
         store.store(data: marshaled_response, ttl: expires_in_seconds)
       end
 
+      Measurometer.increment_counter('idempo.served', 1, via: 'stored')
       [status, headers, body]
     end
   rescue MalformedIdempotencyKey
@@ -63,6 +66,7 @@ class Idempo
     }
     [400, {'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
   rescue ConcurrentRequest
+    Measurometer.increment_counter('idempo.served', 1, via: 'concurrent-request-error')
     res = {
       ok: false,
       error: {
@@ -94,10 +98,14 @@ class Idempo
     end
 
     message_packed_str = MessagePack.pack([status, stringified_headers, body_chunks])
+    deflated_message_packed_str = Zlib.deflate(message_packed_str) + ":1"
+    Measurometer.increment_counter('idempo.response_total_generated_bytes', deflated_message_packed_str.bytesize)
+    Measurometer.add_distribution_value('idempo.response_size_bytes', deflated_message_packed_str.bytesize)
+
     # Add the version specifier at the end, because slicing a string in Ruby at the end
     # (when we unserialize our response again) does a realloc, while slicing at the start
     # does not
-    [Zlib.deflate(message_packed_str) + ":1", body_chunks]
+    [deflated_message_packed_str, body_chunks]
   end
 
   def response_may_be_persisted?(status, headers, body)
