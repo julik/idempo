@@ -5,6 +5,7 @@ class Idempo::RedisBackend
 
   # See https://redis.io/topics/distlock
   DELETE_BY_KEY_AND_VALUE_SCRIPT = <<~EOL
+    redis.replicate_commands()
     if redis.call("get",KEYS[1]) == ARGV[1] then
       -- we are still holding the lock, release it
       redis.call("del",KEYS[1])
@@ -15,8 +16,10 @@ class Idempo::RedisBackend
     end
   EOL
 
-  # See https://redis.io/topics/distlock
+  # See https://redis.io/topics/distlock as well as a rebuttal in
+  # https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
   SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT = <<~EOL
+    redis.replicate_commands()
     if redis.call("get", KEYS[1]) == ARGV[1] then
       -- we are still holding the lock, we can go ahead and set it
       redis.call("set", KEYS[2], ARGV[2], "px", ARGV[3])
