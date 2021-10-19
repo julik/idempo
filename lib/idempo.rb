@@ -29,6 +29,9 @@ class Idempo
     return @app.call(env) if request_verb_idempotent?(req)
     return @app.call(env) unless idempotency_key_header = extract_idempotency_key_from(env)
 
+    # The RFC requires that the Idempotency-Key header value is enclosed in quotes
+    idempotency_key_header = unquote(idempotency_key_header)
+
     fingerprint = compute_request_fingerprint(req)
     request_key = "#{idempotency_key_header}_#{fingerprint}"
 
@@ -133,5 +136,15 @@ class Idempo
 
   def request_verb_idempotent?(request)
     request.get? || request.head? || request.options?
+  end
+
+  def unquote(str)
+    # Do not use regular expressions so that we don't have to thing about a catastrophic lookahead
+    double_quote = '"'
+    if str.start_with?(double_quote) && str.end_with?(double_quote)
+      str[1..-2]
+    else
+      str
+    end
   end
 end
