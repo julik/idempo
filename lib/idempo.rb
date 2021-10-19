@@ -41,7 +41,7 @@ class Idempo
 
     @backend.with_idempotency_key(request_key) do |store|
       if stored_response = store.lookup
-        Measurometer.increment_counter('idempo.served', 1, via: 'cached')
+        Measurometer.increment_counter('idempo.responses_served_from', 1, from: 'store')
         return from_persisted_response(stored_response)
       end
 
@@ -54,7 +54,7 @@ class Idempo
         store.store(data: marshaled_response, ttl: expires_in_seconds)
       end
 
-      Measurometer.increment_counter('idempo.served', 1, via: 'stored')
+      Measurometer.increment_counter('idempo.responses_served_from', 1, from: 'freshly-generated')
       [status, headers, body]
     end
   rescue MalformedIdempotencyKey
@@ -66,7 +66,7 @@ class Idempo
     }
     [400, {'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
   rescue ConcurrentRequest
-    Measurometer.increment_counter('idempo.served', 1, via: 'concurrent-request-error')
+    Measurometer.increment_counter('idempo.responses_served_from', 1, from: 'conflict-concurrent-request')
     res = {
       ok: false,
       error: {

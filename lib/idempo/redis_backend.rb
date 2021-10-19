@@ -12,7 +12,7 @@ class Idempo::RedisBackend
       return "ok"
     else
       -- someone else holds the lock or it has expired
-      return "lock_lost"
+      return "stale"
     end
   EOL
 
@@ -25,7 +25,7 @@ class Idempo::RedisBackend
       redis.call("set", KEYS[2], ARGV[2], "px", ARGV[3])
       return "ok"
     else
-      return "lock_lost"
+      return "stale"
     end
   EOL
 
@@ -54,7 +54,7 @@ class Idempo::RedisBackend
         Idempo::RedisBackend.eval_or_evalsha(r, SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
       end
 
-      Measurometer.increment_counter('idempo.redis_lock_when_storing', 1, outcome: outcome_of_save)
+      Measurometer.increment_counter('idempo.redis_lock_state_when_saving_response', 1, state: outcome_of_save)
     end
   end
 
@@ -84,7 +84,7 @@ class Idempo::RedisBackend
       outcome_of_del = @redis_pool.with do |r|
         Idempo::RedisBackend.eval_or_evalsha(r, DELETE_BY_KEY_AND_VALUE_SCRIPT, keys: [lock_key], argv: [token])
       end
-      Measurometer.increment_counter('idempo_redis_release_lock', 1, outcome: outcome_of_del)
+      Measurometer.increment_counter('idempo.redis_lock_state_when_releasing_lock', 1, state: outcome_of_del)
     end
   end
 
