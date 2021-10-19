@@ -58,8 +58,7 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '2.7'
-          - '2.1'
+          - '2.6'
           - 'jruby-9.2'
         experimental: [false]
         include:
