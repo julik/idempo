@@ -1,8 +1,9 @@
 # Idempo
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/idempo`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+A relatively straightforward idempotency keys gem. If your client sends the `Idempotency-Key` or `X-Idempotency-Key` header to your Rack
+application, and the response can be cached, Idempo will provide both a concurrent request lock and a cache for idempotent responses. If
+the idempotent response is already saved for this idempotency key and request fingerprint, the cached response is going to be served
+instead of calling your application.
 
 ## Installation
 
@@ -22,7 +23,17 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Idempo supports a number of backends, we recommend using Redis if you have multiple application servers / dynos and MemoryBackend if you are only using one single Puma worker. To initialize with Redis as backend pass the `backend:` parameter when adding the middleware:
+
+```ruby
+use Idempo, backend: Idempo::RedisBackend.new(Rails.application.config.redis_connection_pool)
+```
+
+and to initialize with a memory store as backend:
+
+```ruby
+use Idempo, backend: Idempo::MemoryBackend.new)
+```
 
 ## Development
 
