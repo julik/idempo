@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: Gemfile.lock
-          key: ${{ runner.os }}-gemlock-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'zip_tricks.gemspec') }}
+          key: ${{ runner.os }}-gemlock-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'idempo.gemspec') }}
           restore-keys: |
             ${{ runner.os }}-gemlock-${{ matrix.ruby }}-
       - name: Bundle Cache
@@ -53,7 +53,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'Gemfile.lock', 'zip_tricks.gemspec') }}
+          key: ${{ runner.os }}-gems-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'Gemfile.lock', 'idempo.gemspec') }}
           restore-keys: |
             ${{ runner.os }}-gems-${{ matrix.ruby }}-
             ${{ runner.os }}-gems-
@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: Gemfile.lock
-          key: ${{ runner.os }}-gemlock-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'zip_tricks.gemspec') }}
+          key: ${{ runner.os }}-gemlock-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'idempo.gemspec') }}
           restore-keys: |
             ${{ runner.os }}-gemlock-${{ matrix.ruby }}-
       - name: Bundle Cache
@@ -97,7 +97,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'Gemfile.lock', 'zip_tricks.gemspec') }}
+          key: ${{ runner.os }}-gems-${{ matrix.ruby }}-${{ hashFiles('Gemfile', 'Gemfile.lock', 'idempo.gemspec') }}
           restore-keys: |
             ${{ runner.os }}-gems-${{ matrix.ruby }}-
             ${{ runner.os }}-gems-
