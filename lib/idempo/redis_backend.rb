@@ -48,7 +48,7 @@ class Idempo::RedisBackend
       keys = [lock_redis_key, response_redis_key]
       argv = [lock_token, data.force_encoding(Encoding::BINARY), ttl_millis]
       redis_pool.with do |r|
-        r.eval(SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
+        Idempo::RedisBackend.eval_or_evalsha(r, SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
       end
     end
   end
@@ -77,8 +77,22 @@ class Idempo::RedisBackend
       yield(store)
     ensure
       @redis_pool.with do |r|
-        r.eval(DELETE_BY_KEY_AND_VALUE_SCRIPT, keys: [lock_key], argv: [token])
+        Idempo::RedisBackend.eval_or_evalsha(r, DELETE_BY_KEY_AND_VALUE_SCRIPT, keys: [lock_key], argv: [token])
       end
+    end
+  end
+
+  def self.eval_or_evalsha(redis, script_code, keys:, argv:)
+    script_sha = Digest::SHA1.hexdigest(script_code)
+    redis.evalsha(script_sha, keys: keys, argv: argv)
+  rescue Redis::CommandError => e
+    if e.message.include? "NOSCRIPT"
+      # The Redis server has never seen this script before. Needs to run only once in the entire lifetime
+      # of the Redis server, until the script changes - in which case it will be loaded under a different SHA
+      redis.script(:load, script_code)
+      retry
+    else
+      raise e
     end
   end
 end
