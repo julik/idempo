@@ -19,7 +19,7 @@ class Idempo::RedisBackend
   REFRESH_LOCK_SCRIPT = <<~EOL
     redis.replicate_commands()
     if redis.call("get", KEYS[1]) == ARGV[1] then
-      -- we are still holding the lock, we can go ahead and set it
+      -- we are still holding the lock, extend its TTL
       redis.call("expire", KEYS[1], ARGV[2])
       return "ok"
     else
