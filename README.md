@@ -32,8 +32,22 @@ use Idempo, backend: Idempo::RedisBackend.new(Rails.application.config.redis_con
 and to initialize with a memory store as backend:
 
 ```ruby
-use Idempo, backend: Idempo::MemoryBackend.new)
+use Idempo, backend: Idempo::MemoryBackend.new
 ```
+
+In principle, the following requests qualify to be cached used the idempotency key:
+
+* Any request which is not a `GET`, `HEAD` or `OPTIONS` and...
+* Provides an `Idempotency-Key` or `X-Idempotency-Key` header
+
+The default time for storing the cache is 30 seconds from the moment the request has finished generating. The response is going to be buffered, then serialized using msgpack, then deflated. Idempo will not cache the response if its size cannot be known in advance, and if the size of the response body exceeds a reasonable size (4 MB is our limit for the time being) - this is to prevent your storage from filling up with very large responses.
+
+## Controlling the behavior of Idempo
+
+You can control the behavior of Idempo using special headers:
+
+* Set `X-Idempo-Policy` to `no-store` to disable retention of the response even though it otherwise could be cached
+* Set `X-Idempo-Persist-For-Seconds` to decimal number of seconds to store your response fo 
 
 ## Development
 
