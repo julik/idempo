@@ -141,6 +141,7 @@ class Idempo
     d = Digest::SHA256.new
     d << req.url << "\n"
     d << req.request_method << "\n"
+    d << req.get_header('HTTP_AUTHORIZATION').to_s << "\n"
     while chunk = req.env['rack.input'].read(1024 * 65)
       d << chunk
     end

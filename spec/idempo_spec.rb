@@ -77,6 +77,30 @@ RSpec.describe Idempo do
       expect(last_response.body).to eq(first_response_body) # response should have been reused
     end
 
+    it 'provides idempotency for POST requests with the same HTTP auth' do
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem', 'HTTP_AUTHORIZATION' => 'Bearer abc'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      first_response_body = last_response.body
+
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem', 'HTTP_AUTHORIZATION' => 'Bearer abc'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      expect(last_response.body).to eq(first_response_body) # response should have been reused
+    end
+
+    it 'adds the Authorization: header to the idempotency key fingerprint' do
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem', 'HTTP_AUTHORIZATION' => 'Bearer abc'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      first_response_body = last_response.body
+
+      post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => 'idem', 'HTTP_AUTHORIZATION' => 'Bearer mno'
+      expect(last_response).to be_ok
+      expect(last_response.headers['X-Foo']).to eq('bar')
+      expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
+    end
+
     it 'provides idempotency for POST requests with both quoted and unquoted header value' do
       post '/', "somedata", "HTTP_X_IDEMPOTENCY_KEY" => '"idem"'
       expect(last_response).to be_ok
