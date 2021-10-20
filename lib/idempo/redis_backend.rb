@@ -16,13 +16,11 @@ class Idempo::RedisBackend
     end
   EOL
 
-  # See https://redis.io/topics/distlock as well as a rebuttal in
-  # https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
-  SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT = <<~EOL
+  REFRESH_LOCK_SCRIPT = <<~EOL
     redis.replicate_commands()
     if redis.call("get", KEYS[1]) == ARGV[1] then
       -- we are still holding the lock, we can go ahead and set it
-      redis.call("set", KEYS[2], ARGV[2], "px", ARGV[3])
+      redis.call("expire", KEYS[1], ARGV[2])
       return "ok"
     else
       return "stale"
@@ -42,19 +40,16 @@ class Idempo::RedisBackend
       response_redis_key = "idempo:response:#{key}"
       ttl_millis = (ttl * 1000.0).round
 
-      # We save our payload using a script, and we will _only_ save it if our lock is still held.
-      # If our lock expires during the request - for example our app.call takes too long -
-      # we might have lost it, and another request has already saved a payload on our behalf. At this point
-      # we have no guarantee that our response was generated exclusively, or that the response that was generated
-      # by our "competitor" is equal to ours, or that a "competing" request is not holding our lock and executing the
-      # same workload as we just did. The only sensible thing to do when we encounter this is to actually _skip_ the write.
-      keys = [lock_redis_key, response_redis_key]
-      argv = [lock_token, data.force_encoding(Encoding::BINARY), ttl_millis]
-      outcome_of_save = redis_pool.with do |r|
-        Idempo::RedisBackend.eval_or_evalsha(r, SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
+      # We save our payload after making sure we were able to refresh the lock. And we can only refresh the lock
+      # if we still hold it. There is a brief moment where there could be a race (if we extend the lock key TTL
+      # but something happens before Redis has received our SET command and started executing it) but we will
+      # assume that this will be shorter than the LOCK_TTL_SECONDS. This way we do not have to send the entire
+      # data string into Redis Lua.
+      redis_pool.with do |r|
+        lock_state = Idempo::RedisBackend.eval_or_evalsha(r, REFRESH_LOCK_SCRIPT, keys: [lock_redis_key], argv: [lock_token, LOCK_TTL_SECONDS])
+        r.set(response_redis_key, data, px: ttl_millis) if lock_state == 'ok'
+        Measurometer.increment_counter('idempo.redis_lock_state_when_saving_response', 1, state: lock_state)
       end
-
-      Measurometer.increment_counter('idempo.redis_lock_state_when_saving_response', 1, state: outcome_of_save)
     end
   end
 
