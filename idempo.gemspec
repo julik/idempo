@@ -46,6 +46,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rack-test"
   spec.add_development_dependency "activerecord"
   spec.add_development_dependency "mysql2"
+  spec.add_development_dependency "pg"
   spec.add_development_dependency "wetransfer_style"
 
   # For more information and examples about making a new gem, checkout our
