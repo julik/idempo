@@ -152,7 +152,7 @@ class Idempo
   end
 
   def unquote(str)
-    # Do not use regular expressions so that we don't have to thing about a catastrophic lookahead
+    # Do not use regular expressions so that we don't have to think about a catastrophic lookahead
     double_quote = '"'
     if str.start_with?(double_quote) && str.end_with?(double_quote)
       str[1..-2]
