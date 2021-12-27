@@ -11,6 +11,8 @@ require_relative "idempo/version"
 require_relative "idempo/memory_backend"
 require_relative "idempo/redis_backend"
 require_relative "idempo/active_record_backend"
+require_relative "idempo/malformed_key_error_app"
+require_relative "idempo/concurrent_request_error_app"
 
 class Idempo
   DEFAULT_TTL = 30
@@ -22,9 +24,11 @@ class Idempo
 
   class MalformedIdempotencyKey < Error; end
 
-  def initialize(app, backend: MemoryBackend.new)
+  def initialize(app, backend: MemoryBackend.new, malformed_key_error_app: MalformedKeyErrorApp, concurrent_request_error_app: ConcurrentRequestErrorApp)
     @backend = backend
     @app = app
+    @concurrent_request_error_app = concurrent_request_error_app
+    @malformed_key_error_app = malformed_key_error_app
   end
 
   def call(env)
@@ -58,22 +62,11 @@ class Idempo
       [status, headers, body]
     end
   rescue MalformedIdempotencyKey
-    res = {
-      ok: false,
-      error: {
-        message: "The Idempotency-Key header provided was empty"
-      }
-    }
-    [400, {'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
+    Measurometer.increment_counter('idempo.responses_served_from', 1, from: 'malformed-idempotency-key')
+    @malformed_key_error_app.call(env)
   rescue ConcurrentRequest
     Measurometer.increment_counter('idempo.responses_served_from', 1, from: 'conflict-concurrent-request')
-    res = {
-      ok: false,
-      error: {
-        message: "Another request with this idempotency key is still in progress, please try again later"
-      }
-    }
-    [429, {'Retry-After' => '2', 'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
+    @concurrent_request_error_app.call(env)
   end
 
   private
