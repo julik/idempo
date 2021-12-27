@@ -64,7 +64,7 @@ class Idempo::RedisBackend
     end
   end
 
-  def initialize(redis_or_connection_pool)
+  def initialize(redis_or_connection_pool = Redis.new)
     require 'redis'
     require 'securerandom'
     @redis_pool = redis_or_connection_pool.respond_to?(:with) ? redis_or_connection_pool : NullPool.new(redis_or_connection_pool)

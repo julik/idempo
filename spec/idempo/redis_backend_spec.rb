@@ -7,7 +7,7 @@ require 'redis'
 RSpec.describe Idempo::RedisBackend do
   let(:subject) do
     require 'redis'
-    described_class.new(Redis.new)
+    described_class.new
   end
 
   it_should_behave_like "a backend for Idempo"
