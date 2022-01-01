@@ -87,7 +87,7 @@ class Idempo
 
     # Only keep headers which are strings
     stringified_headers = headers.each_with_object({}) do |(header, value), filtered|
-      filtered[header] = value if value.is_a?(String)
+      filtered[header] = value if !header.start_with?('rack.') && value.is_a?(String)
     end
 
     message_packed_str = MessagePack.pack([status, stringified_headers, body_chunks])
@@ -113,8 +113,7 @@ class Idempo
 
     return false unless body.is_a?(Array) # Arbitrary iterable of unknown size
 
-    precomputed_body_size = body.inject(0) { |sum, chunk| sum + chunk.bytesize }
-    precomputed_body_size <= SAVED_RESPONSE_BODY_SIZE_LIMIT
+    sum_of_string_bytesizes(body) <= SAVED_RESPONSE_BODY_SIZE_LIMIT
   end
 
   def status_may_be_persisted?(status)
@@ -149,6 +148,10 @@ class Idempo
 
   def request_verb_idempotent?(request)
     request.get? || request.head? || request.options?
+  end
+
+  def sum_of_string_bytesizes(in_array)
+    in_array.inject(0) { |sum, chunk| sum + chunk.bytesize }
   end
 
   def unquote(str)
