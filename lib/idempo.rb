@@ -16,7 +16,7 @@ require_relative "idempo/malformed_key_error_app"
 require_relative "idempo/concurrent_request_error_app"
 
 class Idempo
-  DEFAULT_TTL = 30
+  DEFAULT_TTL_SECONDS = 30
   SAVED_RESPONSE_BODY_SIZE_LIMIT = 4 * 1024 * 1024
 
   class Error < StandardError; end
@@ -25,12 +25,13 @@ class Idempo
 
   class MalformedIdempotencyKey < Error; end
 
-  def initialize(app, backend: MemoryBackend.new, malformed_key_error_app: MalformedKeyErrorApp, compute_fingerprint_via: RequestFingerprint, concurrent_request_error_app: ConcurrentRequestErrorApp)
+  def initialize(app, backend: MemoryBackend.new, malformed_key_error_app: MalformedKeyErrorApp, compute_fingerprint_via: RequestFingerprint, concurrent_request_error_app: ConcurrentRequestErrorApp, persist_for_seconds: DEFAULT_TTL_SECONDS)
     @backend = backend
     @app = app
     @concurrent_request_error_app = concurrent_request_error_app
     @malformed_key_error_app = malformed_key_error_app
     @fingerprint_calculator = compute_fingerprint_via
+    @persist_for_seconds = persist_for_seconds.to_i
   end
 
   def call(env)
@@ -53,7 +54,7 @@ class Idempo
       status, headers, body = @app.call(env)
 
       if response_may_be_persisted?(status, headers, body)
-        expires_in_seconds = (headers.delete('X-Idempo-Persist-For-Seconds') || DEFAULT_TTL).to_i
+        expires_in_seconds = (headers.delete('X-Idempo-Persist-For-Seconds') || @persist_for_seconds).to_i
         # Body is replaced with a cached version since a Rack response body is not rewindable
         marshaled_response, body = serialize_response(status, headers, body)
         store.store(data: marshaled_response, ttl: expires_in_seconds)
