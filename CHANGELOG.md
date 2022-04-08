@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.2.0] - 2022-04-08
 
 - Allow setting the global default TTL for the cached responses
 - Allow customisation of the request key computation (so that the client can decide whether to include/exclude `Authorization` and the like)
