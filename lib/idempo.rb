@@ -8,6 +8,7 @@ require 'json'
 require 'measurometer'
 
 require_relative "idempo/version"
+require_relative "idempo/request_fingerprint"
 require_relative "idempo/memory_backend"
 require_relative "idempo/redis_backend"
 require_relative "idempo/active_record_backend"
@@ -24,11 +25,12 @@ class Idempo
 
   class MalformedIdempotencyKey < Error; end
 
-  def initialize(app, backend: MemoryBackend.new, malformed_key_error_app: MalformedKeyErrorApp, concurrent_request_error_app: ConcurrentRequestErrorApp)
+  def initialize(app, backend: MemoryBackend.new, malformed_key_error_app: MalformedKeyErrorApp, compute_fingerprint_via: RequestFingerprint, concurrent_request_error_app: ConcurrentRequestErrorApp)
     @backend = backend
     @app = app
     @concurrent_request_error_app = concurrent_request_error_app
     @malformed_key_error_app = malformed_key_error_app
+    @fingerprint_calculator = compute_fingerprint_via
   end
 
   def call(env)
@@ -37,11 +39,10 @@ class Idempo
     return @app.call(env) unless idempotency_key_header = extract_idempotency_key_from(env)
 
     # The RFC requires that the Idempotency-Key header value is enclosed in quotes
-    idempotency_key_header = unquote(idempotency_key_header)
-    raise MalformedIdempotencyKey if idempotency_key_header == ''
+    idempotency_key_header_value = unquote(idempotency_key_header)
+    raise MalformedIdempotencyKey if idempotency_key_header_value == ''
 
-    fingerprint = compute_request_fingerprint(req)
-    request_key = "#{idempotency_key_header}_#{fingerprint}"
+    request_key = @fingerprint_calculator.call(idempotency_key_header_value, req)
 
     @backend.with_idempotency_key(request_key) do |store|
       if stored_response = store.lookup
@@ -127,19 +128,6 @@ class Idempo
     else
       false
     end
-  end
-
-  def compute_request_fingerprint(req)
-    d = Digest::SHA256.new
-    d << req.url << "\n"
-    d << req.request_method << "\n"
-    d << req.get_header('HTTP_AUTHORIZATION').to_s << "\n"
-    while chunk = req.env['rack.input'].read(1024 * 65)
-      d << chunk
-    end
-    Base64.strict_encode64(d.digest)
-  ensure
-    req.env['rack.input'].rewind
   end
 
   def extract_idempotency_key_from(env)
