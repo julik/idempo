@@ -53,8 +53,8 @@ class Idempo
 
       status, headers, body = @app.call(env)
 
+      expires_in_seconds = (headers.delete('X-Idempo-Persist-For-Seconds') || @persist_for_seconds).to_i
       if response_may_be_persisted?(status, headers, body)
-        expires_in_seconds = (headers.delete('X-Idempo-Persist-For-Seconds') || @persist_for_seconds).to_i
         # Body is replaced with a cached version since a Rack response body is not rewindable
         marshaled_response, body = serialize_response(status, headers, body)
         store.store(data: marshaled_response, ttl: expires_in_seconds)
