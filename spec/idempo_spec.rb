@@ -191,6 +191,24 @@ RSpec.describe Idempo do
       expect(last_response.headers['X-Foo']).to eq('bar')
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
+
+    context 'with side effects' do
+      let(:app) do
+        $counter = 0
+        the_app = ->(_env) {
+          $counter += 1
+          [200, {}, [Random.new.bytes(15)]]
+        }
+        Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      end
+
+      it 'only executes the side effect once' do
+        post '/', '', 'HTTP_X_IDEMPOTENCY_KEY' => 'idem'
+        post '/', '', 'HTTP_X_IDEMPOTENCY_KEY' => 'idem'
+
+        expect($counter).to eq(1)
+      end
+    end
   end
 
   describe 'with an application that asks the idempotent request not to be stored' do
