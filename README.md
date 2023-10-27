@@ -71,7 +71,7 @@ config.middleware.insert Idempo, backend: Idempo::ActiveRecordBackend.new
 In your regular tasks (cron or Rake) you will want to add a call to delete old Idempo responses (there is an index on `expire_at`):
 
 ```ruby
-Idempo::ActiveRecordBackend.new.model.where('expire_at < ?', Time.now).delete_all
+Idempo::ActiveRecordBackend.new.model.where('expire_at < ?', Time.now).in_batches.delete_all
 ```
 
 If you need to use Idempo with PGBouncer you will need to write your own locking implementation based on fencing tokens or similar.
