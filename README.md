@@ -42,7 +42,7 @@ If you run only one Puma on one server (so multiple threads but one process) the
 * It uses a `Set` with a `Mutex` around it to store requests in progress
 * It uses a sorted array for expiration and cached responses.
 
-Needless to say, if your server terminates or restarts all the data goes dead with it. However 
+Needless to say, if your server terminates or restarts all the data disappears with it. This backend will also only work if you are running one Puma process (or other single-process server, and just one instance of it). 
 
 ## Using your database for idempotency keys (via ActiveRecord)
 
@@ -74,6 +74,8 @@ In your regular tasks (cron or Rake) you will want to add a call to delete old I
 Idempo::ActiveRecordBackend.new.model.where('expire_at_ < ?', Time.now).delete_all
 ```
 
+If you need to use Idempo with PGBouncer you will need to write your own locking implementation based on fencing tokens or similar.
+
 ## Using Redis for idempotency keys
 
 Redis is a near-perfect data store for idempotency keys, but it can have race conditions with locks if your application runs for too long or crashes very often. If you have Redis, initialize Idempo using the `RedisBackend`:
@@ -88,7 +90,7 @@ If you have a configured Redis connection pool (and you should) - pass it to the
 config.middleware.insert Idempo, backend: Idempo::RedisBackend.new(config.redis_connection_pool)
 ```
 
-All data stored in Redis will have TTLs and will expire automatically.
+All data stored in Redis will have TTLs and will expire automatically. Redis scripts ensure that updates to the stored idempotent responses and locking happen atomically.
 
 
 ## Installation
