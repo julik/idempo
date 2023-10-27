@@ -7,18 +7,6 @@ on:
 env:
   BUNDLE_PATH: vendor/bundle
 
-services:
-  mysql:
-    image: mysql:5.7
-    env:
-        MYSQL_ALLOW_EMPTY_PASSWORD: yes
-    ports:
-        - 3306
-    options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-  redis:
-    image: redis
-    options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-
 jobs:
   lint:
     name: Code Style
@@ -72,6 +60,17 @@ jobs:
         ruby:
           - '2.6'
           - '3.0'
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+            MYSQL_ALLOW_EMPTY_PASSWORD: yes
+        ports:
+            - 3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      redis:
+        image: redis
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v2
