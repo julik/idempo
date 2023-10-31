@@ -72,3 +72,6 @@ jobs:
           bundler-cache: true
       - name: RSpec
         run: bundle exec rspec
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: 3306
