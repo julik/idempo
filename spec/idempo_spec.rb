@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
 require 'rack/test'
+require 'spec_helper'
 
 RSpec.describe Idempo do
   it "has a version number" do
