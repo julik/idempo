@@ -63,3 +63,5 @@ jobs:
           bundler-cache: true
       - name: RSpec
         run: bundle exec rspec
+        env:
+          REDIS_URL: redis://redis:6379
