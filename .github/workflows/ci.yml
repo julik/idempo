@@ -41,7 +41,7 @@ jobs:
       matrix:
         ruby:
           - '2.6'
-          - '3.0'
+          - '3.2'
     services:
       mysql:
         image: mysql:5.7
