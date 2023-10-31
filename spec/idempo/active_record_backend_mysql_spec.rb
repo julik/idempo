@@ -6,15 +6,13 @@ require 'mysql2'
 require_relative 'shared_backend_specs'
 
 RSpec.describe Idempo::ActiveRecordBackend do
-  let(:connection) do
-    if ENV['CI']
-      {host: ENV['MYSQL_HOST'], port: ENV['MYSQL_PORT'], adapter: 'mysql2'}
-    else
-      {adapter: 'mysql2'}
-    end
-  end
-
   before :all do
+    connection = if ENV['CI']
+                   {host: ENV['MYSQL_HOST'], port: ENV['MYSQL_PORT'], adapter: 'mysql2'}
+                 else
+                   {adapter: 'mysql2'}
+                 end
+
     seed_db_name = Random.new(RSpec.configuration.seed).hex(4)
     ActiveRecord::Base.establish_connection(**connection, username: 'root')
     ActiveRecord::Base.connection.create_database('idempo_tests_%s' % seed_db_name, charset: :utf8mb4)
