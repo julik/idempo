@@ -2,7 +2,7 @@
 class Idempo::ActiveRecordBackend
   def self.create_table(via_migration)
     via_migration.create_table 'idempo_responses', charset: 'utf8mb4', collation: 'utf8mb4_unicode_ci' do |t|
-      t.string :idempotent_request_key, index: true, unique: true, null: false
+      t.string :idempotent_request_key, index: {unique: true}, null: false
       t.datetime :expire_at, index: true, null: false # Needs an index for cleanup
       t.binary :idempotent_response_payload, size: :medium
       t.timestamps
