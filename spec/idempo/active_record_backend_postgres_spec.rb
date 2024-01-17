@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
 require 'active_record'
 require 'mysql2'
+require 'spec_helper'
 require_relative 'shared_backend_specs'
 
 RSpec.describe Idempo::ActiveRecordBackend do

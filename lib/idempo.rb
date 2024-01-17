@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
-require 'zlib'
-require 'msgpack'
 require 'base64'
 require 'digest'
 require 'json'
 require 'measurometer'
+require 'msgpack'
+require 'zlib'
 
-require_relative "idempo/version"
-require_relative "idempo/request_fingerprint"
+require_relative "idempo/active_record_backend"
+require_relative "idempo/concurrent_request_error_app"
+require_relative "idempo/malformed_key_error_app"
 require_relative "idempo/memory_backend"
 require_relative "idempo/redis_backend"
-require_relative "idempo/active_record_backend"
-require_relative "idempo/malformed_key_error_app"
-require_relative "idempo/concurrent_request_error_app"
+require_relative "idempo/request_fingerprint"
+require_relative "idempo/version"
 
 class Idempo
   DEFAULT_TTL_SECONDS = 30

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
 require 'rack/test'
+require 'spec_helper'
 
 RSpec.describe Idempo do
   it "has a version number" do
@@ -194,9 +194,9 @@ RSpec.describe Idempo do
 
     context 'with side effects' do
       let(:app) do
-        $counter = 0
+        @counter = 0
         the_app = ->(_env) {
-          $counter += 1
+          @counter += 1
           [200, {}, [Random.new.bytes(15)]]
         }
         Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
@@ -206,7 +206,7 @@ RSpec.describe Idempo do
         post '/', '', 'HTTP_X_IDEMPOTENCY_KEY' => 'idem'
         post '/', '', 'HTTP_X_IDEMPOTENCY_KEY' => 'idem'
 
-        expect($counter).to eq(1)
+        expect(@counter).to eq(1)
       end
     end
   end
