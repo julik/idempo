@@ -31,8 +31,8 @@ jobs:
           key: ${{ runner.os }}-rubocop-${{ hashFiles('.rubocop.yml') }}
           restore-keys: |
             ${{ runner.os }}-rubocop-
-      - name: Rubocop
-        run: bundle exec rubocop
+      - name: Standard (Lint)
+        run: bundle exec rake standard
   test:
     name: Specs
     runs-on: ubuntu-22.04
