@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-require_relative 'shared_backend_specs'
+require "spec_helper"
+require_relative "shared_backend_specs"
 
 RSpec.describe Idempo::MemoryBackend do
   let(:subject) do

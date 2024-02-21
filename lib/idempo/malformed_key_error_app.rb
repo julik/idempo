@@ -1,4 +1,4 @@
-require 'json'
+require "json"
 
 class Idempo::MalformedKeyErrorApp
   def self.call(env)
@@ -8,6 +8,6 @@ class Idempo::MalformedKeyErrorApp
         message: "The Idempotency-Key header provided was empty or malformed"
       }
     }
-    [400, {'Content-Type' => 'application/json'}, [JSON.pretty_generate(res)]]
+    [400, {"Content-Type" => "application/json"}, [JSON.pretty_generate(res)]]
   end
 end

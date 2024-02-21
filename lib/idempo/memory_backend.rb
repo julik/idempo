@@ -1,7 +1,7 @@
 class Idempo::MemoryBackend
   def initialize
-    require 'set'
-    require_relative 'response_store'
+    require "set"
+    require_relative "response_store"
 
     @requests_in_flight_mutex = Mutex.new
     @in_progress = Set.new

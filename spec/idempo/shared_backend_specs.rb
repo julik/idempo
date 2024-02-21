@@ -1,5 +1,5 @@
 RSpec.shared_examples "a backend for Idempo" do
-  it 'does not return a nonexistent value' do
+  it "does not return a nonexistent value" do
     random_key = Random.new(RSpec.configuration.seed).bytes(12)
 
     subject.with_idempotency_key(random_key) do |store|
@@ -7,7 +7,7 @@ RSpec.shared_examples "a backend for Idempo" do
     end
   end
 
-  it 'stores a value and then returns it' do
+  it "stores a value and then returns it" do
     random_key = Random.new(RSpec.configuration.seed).bytes(8)
     value = Random.new(RSpec.configuration.seed).bytes(1209)
 
@@ -18,7 +18,7 @@ RSpec.shared_examples "a backend for Idempo" do
     end
   end
 
-  it 'shortens the expiry of a value if stored twice with a shorter expiry' do
+  it "shortens the expiry of a value if stored twice with a shorter expiry" do
     random_key = Random.new(RSpec.configuration.seed).bytes(8)
     value = Random.new(RSpec.configuration.seed).bytes(1209)
 
@@ -30,7 +30,7 @@ RSpec.shared_examples "a backend for Idempo" do
     end
   end
 
-  it 'does not return a value after it expires' do
+  it "does not return a value after it expires" do
     random_key = Random.new(RSpec.configuration.seed).bytes(11)
     value = Random.new(RSpec.configuration.seed).bytes(1209)
 
@@ -41,7 +41,7 @@ RSpec.shared_examples "a backend for Idempo" do
     end
   end
 
-  it 'provides locking' do
+  it "provides locking" do
     lock_key = Random.new(RSpec.configuration.seed).bytes(14)
     a, b, c = (1..3).map do
       Fiber.new do

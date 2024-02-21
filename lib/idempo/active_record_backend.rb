@@ -1,7 +1,7 @@
 # This backend currently only works with mysql2 since it uses advisory locks
 class Idempo::ActiveRecordBackend
   def self.create_table(via_migration)
-    via_migration.create_table 'idempo_responses', charset: 'utf8mb4', collation: 'utf8mb4_unicode_ci' do |t|
+    via_migration.create_table "idempo_responses", charset: "utf8mb4", collation: "utf8mb4_unicode_ci" do |t|
       t.string :idempotent_request_key, index: {unique: true}, null: false
       t.datetime :expire_at, index: true, null: false # Needs an index for cleanup
       t.binary :idempotent_response_payload, size: :medium
@@ -11,7 +11,7 @@ class Idempo::ActiveRecordBackend
 
   class Store < Struct.new(:key, :model)
     def lookup
-      model.where(idempotent_request_key: key).where('expire_at > ?', Time.now).first&.idempotent_response_payload
+      model.where(idempotent_request_key: key).where("expire_at > ?", Time.now).first&.idempotent_response_payload
     end
 
     def store(data:, ttl:)
@@ -27,18 +27,18 @@ class Idempo::ActiveRecordBackend
 
   class PostgresLock
     def acquire(conn, based_on_str)
-      acquisition_result = conn.select_value('SELECT pg_try_advisory_lock(%d)' % derive_lock_key(based_on_str))
-      [true, 't'].include?(acquisition_result)
+      acquisition_result = conn.select_value("SELECT pg_try_advisory_lock(%d)" % derive_lock_key(based_on_str))
+      [true, "t"].include?(acquisition_result)
     end
 
     def release(conn, based_on_str)
-      conn.select_value('SELECT pg_advisory_unlock(%d)' % derive_lock_key(based_on_str))
+      conn.select_value("SELECT pg_advisory_unlock(%d)" % derive_lock_key(based_on_str))
     end
 
     def derive_lock_key(from_str)
       # The key must be a single bigint (signed long)
       hash_bytes = Digest::SHA1.digest(from_str)
-      hash_bytes[0...8].unpack('l_').first
+      hash_bytes[0...8].unpack1("l_")
     end
   end
 
@@ -59,13 +59,13 @@ class Idempo::ActiveRecordBackend
   end
 
   def initialize
-    require 'active_record'
+    require "active_record"
   end
 
   # Allows the model to be defined lazily without having to require active_record when this module gets loaded
   def model
     @model_class ||= Class.new(ActiveRecord::Base) do
-      self.table_name = 'idempo_responses'
+      self.table_name = "idempo_responses"
     end
   end
 
@@ -85,9 +85,9 @@ class Idempo::ActiveRecordBackend
   private
 
   def lock_implementation_for_connection(connection)
-    if connection.adapter_name =~ /^mysql2/i
+    if /^mysql2/i.match?(connection.adapter_name)
       MysqlLock.new
-    elsif connection.adapter_name =~ /^postgres/i
+    elsif /^postgres/i.match?(connection.adapter_name)
       PostgresLock.new
     else
       raise "Unsupported database driver #{model.connection.adapter_name.downcase} - we don't know whether it supports advisory locks"

@@ -3,21 +3,21 @@
 require_relative "lib/idempo/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "idempo"
-  spec.version       = Idempo::VERSION
-  spec.authors       = ["Julik Tarkhanov", "Pablo Crivella"]
-  spec.email         = ["me@julik.nl", "pablocrivella@gmail.com"]
+  spec.name = "idempo"
+  spec.version = Idempo::VERSION
+  spec.authors = ["Julik Tarkhanov", "Pablo Crivella"]
+  spec.email = ["me@julik.nl", "pablocrivella@gmail.com"]
 
-  spec.summary       = "Idempotency keys for all."
-  spec.description   = "Provides idempotency keys for Rack applications."
-  spec.homepage      = "https://github.com/julik/idempo"
-  spec.license       = "MIT"
+  spec.summary = "Idempotency keys for all."
+  spec.description = "Provides idempotency keys for Rack applications."
+  spec.homepage = "https://github.com/julik/idempo"
+  spec.license = "MIT"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.4.0")
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
   # to allow pushing to a single host or delete this section to allow pushing to any host.
   if spec.respond_to?(:metadata)
-    spec.metadata['allowed_push_host'] = "https://rubygems.org"
+    spec.metadata["allowed_push_host"] = "https://rubygems.org"
   else
     raise "RubyGems 2.0 or newer is required to protect against public gem pushes."
   end
@@ -31,14 +31,14 @@ Gem::Specification.new do |spec|
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{\A(?:test|spec|features)/}) }
   end
-  spec.bindir        = "exe"
-  spec.executables   = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
+  spec.bindir = "exe"
+  spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "rack"
   spec.add_dependency "msgpack"
-  spec.add_dependency "measurometer", '~> 1.3'
+  spec.add_dependency "measurometer", "~> 1.3"
 
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.0"
@@ -47,7 +47,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "activerecord"
   spec.add_development_dependency "mysql2"
   spec.add_development_dependency "pg"
-  spec.add_development_dependency "wetransfer_style"
+  spec.add_development_dependency "standard"
 
   # For more information and examples about making a new gem, checkout our
   # guide at: https://bundler.io/guides/creating_gem.html
