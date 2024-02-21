@@ -54,7 +54,7 @@ class Idempo::RedisBackend
         Idempo::RedisBackend.eval_or_evalsha(r, SET_WITH_TTL_IF_LOCK_STILL_HELD_SCRIPT, keys: keys, argv: argv)
       end
 
-      Measurometer.increment_counter('idempo.redis_lock_state_when_saving_response', 1, state: outcome_of_save)
+      Measurometer.increment_counter("idempo.redis_lock_state_when_saving_response", 1, state: outcome_of_save)
     end
   end
 
@@ -65,8 +65,8 @@ class Idempo::RedisBackend
   end
 
   def initialize(redis_or_connection_pool = Redis.new)
-    require 'redis'
-    require 'securerandom'
+    require "redis"
+    require "securerandom"
     @redis_pool = redis_or_connection_pool.respond_to?(:with) ? redis_or_connection_pool : NullPool.new(redis_or_connection_pool)
   end
 
@@ -84,7 +84,7 @@ class Idempo::RedisBackend
       outcome_of_del = @redis_pool.with do |r|
         Idempo::RedisBackend.eval_or_evalsha(r, DELETE_BY_KEY_AND_VALUE_SCRIPT, keys: [lock_key], argv: [token])
       end
-      Measurometer.increment_counter('idempo.redis_lock_state_when_releasing_lock', 1, state: outcome_of_del)
+      Measurometer.increment_counter("idempo.redis_lock_state_when_releasing_lock", 1, state: outcome_of_del)
     end
   end
 

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-require_relative 'shared_backend_specs'
-require 'redis'
+require "spec_helper"
+require_relative "shared_backend_specs"
+require "redis"
 
 RSpec.describe Idempo::RedisBackend do
   let(:subject) do
-    require 'redis'
+    require "redis"
     described_class.new
   end
 
@@ -17,7 +17,7 @@ RSpec.describe Idempo::RedisBackend do
     request = Fiber.new do
       subject.with_idempotency_key("req1") do |store|
         Fiber.yield
-        store.store(data: "From first request".dup, ttl: 300)
+        store.store(data: +"From first request", ttl: 300)
       end
     end
 
@@ -34,7 +34,7 @@ RSpec.describe Idempo::RedisBackend do
       subject.with_idempotency_key("req2") do |store|
         redis.set("idempo:lock:req2", "Stolen by another request")
         Fiber.yield
-        store.store(data: "From first request".dup, ttl: 300)
+        store.store(data: +"From first request", ttl: 300)
       end
     end
 
@@ -54,7 +54,7 @@ RSpec.describe Idempo::RedisBackend do
       subject.with_idempotency_key("req3") do |store|
         expect(redis.get("idempo:lock:req3")).to be_kind_of(String)
         Fiber.yield
-        store.store(data: "From third request".dup, ttl: 300)
+        store.store(data: +"From third request", ttl: 300)
       end
     end
 
