@@ -87,7 +87,6 @@ class Idempo
     # Buffer the Rack response body, we can only do that once (it is non-rewindable)
     body_chunks = []
     rack_response_body.each { |chunk| body_chunks << chunk.dup }
-    rack_response_body.close if rack_response_body.respond_to?(:close)
 
     # Only keep headers which are strings
     stringified_headers = headers.each_with_object({}) do |(header, value), filtered|
@@ -103,6 +102,8 @@ class Idempo
     # (when we unserialize our response again) does a realloc, while slicing at the start
     # does not
     [deflated_message_packed_str, body_chunks]
+  ensure
+    rack_response_body.close if rack_response_body.respond_to?(:close)
   end
 
   def response_may_be_persisted?(status, headers, body)
