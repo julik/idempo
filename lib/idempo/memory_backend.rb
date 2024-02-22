@@ -1,12 +1,9 @@
 class Idempo::MemoryBackend
   def initialize
-    require "set"
     require_relative "response_store"
-
-    @requests_in_flight_mutex = Mutex.new
-    @in_progress = Set.new
-    @store_mutex = Mutex.new
+    @lock = Idempo::MemoryLock.new
     @response_store = Idempo::ResponseStore.new
+    @store_mutex = Mutex.new
   end
 
   class Store < Struct.new(:store_mutex, :response_store, :key, keyword_init: true)
@@ -24,22 +21,9 @@ class Idempo::MemoryBackend
   end
 
   def with_idempotency_key(request_key)
-    did_insert = @requests_in_flight_mutex.synchronize do
-      if @in_progress.include?(request_key)
-        false
-      else
-        @in_progress << request_key
-        true
-      end
-    end
-
-    raise Idempo::ConcurrentRequest unless did_insert
-
-    store = Store.new(store_mutex: @store_mutex, response_store: @response_store, key: request_key)
-    begin
+    @lock.with(request_key) do
+      store = Store.new(store_mutex: @store_mutex, response_store: @response_store, key: request_key)
       yield(store)
-    ensure
-      @requests_in_flight_mutex.synchronize { @in_progress.delete(request_key) }
     end
   end
 

@@ -60,6 +60,7 @@ class Idempo::ActiveRecordBackend
 
   def initialize
     require "active_record"
+    @memory_lock = Idempo::MemoryLock.new
   end
 
   # Allows the model to be defined lazily without having to require active_record when this module gets loaded
@@ -70,15 +71,25 @@ class Idempo::ActiveRecordBackend
   end
 
   def with_idempotency_key(request_key)
-    db_safe_key = Digest::SHA1.base64digest(request_key)
-    lock = lock_implementation_for_connection(model.connection)
+    # We need to use an in-memory lock because database advisory locks are
+    # reentrant. Both Postgres and MySQL allow multiple acquisitions of the
+    # same advisory lock within the same connection - in most Rails/Rack apps
+    # this translates to "within the same thread". This means that if one
+    # elects to use a non-threading webserver (like Falcon), or tests Idempo
+    # within the same thread (like we do), they won't get advisory locking
+    # for concurrent requests. Therefore a staged lock is required. First we apply
+    # the memory lock (for same thread on this process/multiple threads on this
+    # process) and then once we have that - the DB lock.
+    @memory_lock.with(request_key) do
+      db_safe_key = Digest::SHA1.base64digest(request_key)
+      database_lock = lock_implementation_for_connection(model.connection)
+      raise Idempo::ConcurrentRequest unless database_lock.acquire(model.connection, request_key)
 
-    raise Idempo::ConcurrentRequest unless lock.acquire(model.connection, request_key)
-
-    begin
-      yield(Store.new(db_safe_key, model))
-    ensure
-      lock.release(model.connection, request_key)
+      begin
+        yield(Store.new(db_safe_key, model))
+      ensure
+        database_lock.release(model.connection, request_key)
+      end
     end
   end
 

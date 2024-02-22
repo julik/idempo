@@ -1,3 +1,7 @@
+## [1.2.0] - 2024-02-22
+
+- Use memory locking in addition to DB locking in `ActiveRecordBackend`
+
 ## [1.1.0] - 2024-02-22
 
 - Use modern ActiveRecord migration options for better Rails 7.x compatibility
