@@ -41,6 +41,17 @@ RSpec.shared_examples "a backend for Idempo" do
     end
   end
 
+  it "supports pruning" do
+    random_key = Random.new(RSpec.configuration.seed).bytes(11)
+    value = Random.new(RSpec.configuration.seed).bytes(1209)
+
+    subject.with_idempotency_key(random_key) do |store|
+      store.store(data: value, ttl: 1)
+    end
+    sleep 2
+    expect { subject.prune! }.not_to raise_error
+  end
+
   it "provides locking" do
     lock_key = Random.new(RSpec.configuration.seed).bytes(14)
     a, b, c = (1..3).map do

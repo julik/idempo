@@ -25,8 +25,6 @@ class Idempo::ResponseStore
     nil
   end
 
-  private
-
   def prune
     now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     items_to_delete = remove_lower_than(@expiries, now, &:expire_at)
@@ -34,6 +32,8 @@ class Idempo::ResponseStore
       @values.delete(expiry_handle.key) if @values[expiry_handle.key] && @values[expiry_handle.key].expire_at < now
     end
   end
+
+  private
 
   def binary_insert(array, item, &property_getter)
     at_i = array.bsearch_index do |stored_item|

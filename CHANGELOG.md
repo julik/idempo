@@ -1,3 +1,15 @@
+## [1.1.0] - 2024-02-22
+
+- Use modern ActiveRecord migration options for better Rails 7.x compatibility
+- Ensure Github actions CI can run and uses Postgres appropriately
+- Add examples for more sophisticated use cases
+- Implement `#prune!` on storage backends
+- Reformat all code using [standard](https://github.com/standardrb/standard) instead of wetransfer_style as it is both more relaxed and more modern
+
+## [1.0.0] - 2023-10-27
+
+- Release 1.0 as the API can be considered stable and the gem has been in production for years
+
 ## [0.2.0] - 2022-04-08
 
 - Allow setting the global default TTL for the cached responses

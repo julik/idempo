@@ -82,6 +82,11 @@ class Idempo::ActiveRecordBackend
     end
   end
 
+  # Deletes expired cached Idempo responses from the database, in batches
+  def prune!
+    model.where("expire_at < ?", Time.now).in_batches.delete_all
+  end
+
   private
 
   def lock_implementation_for_connection(connection)

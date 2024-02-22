@@ -88,6 +88,10 @@ class Idempo::RedisBackend
     end
   end
 
+  def prune!
+    # Do nothing
+  end
+
   def self.eval_or_evalsha(redis, script_code, keys:, argv:)
     script_sha = Digest::SHA1.hexdigest(script_code)
     redis.evalsha(script_sha, keys: keys, argv: argv)

@@ -42,4 +42,8 @@ class Idempo::MemoryBackend
       @requests_in_flight_mutex.synchronize { @in_progress.delete(request_key) }
     end
   end
+
+  def prune!
+    @response_store.prune
+  end
 end
