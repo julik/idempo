@@ -1,3 +1,7 @@
+## [1.2.1] - 2024-02-22
+
+- Use autoloading for internal modules. A user using Redis does not have to load the ActiveRecord storage backend, for example
+
 ## [1.2.0] - 2024-02-22
 
 - Use memory locking in addition to DB locking in `ActiveRecordBackend`

@@ -1,5 +1,3 @@
-require "json"
-
 class Idempo::MalformedKeyErrorApp
   def self.call(env)
     res = {
