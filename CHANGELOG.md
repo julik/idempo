@@ -1,4 +1,4 @@
-## [1.2.1] - 2024-02-22
+## [1.2.1] - 2024-02-27
 
 - Use autoloading for internal modules. A user using Redis does not have to load the ActiveRecord storage backend, for example
 - Ensure that the original Rack response body receives a `close` when reading out for caching
