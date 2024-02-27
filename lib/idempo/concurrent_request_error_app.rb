@@ -1,5 +1,3 @@
-require "json"
-
 class Idempo::ConcurrentRequestErrorApp
   RETRY_AFTER_SECONDS = 2.to_s
 

@@ -8,16 +8,17 @@ require "msgpack"
 require "zlib"
 require "set"
 
-require_relative "idempo/active_record_backend"
-require_relative "idempo/concurrent_request_error_app"
-require_relative "idempo/malformed_key_error_app"
-require_relative "idempo/memory_backend"
-require_relative "idempo/redis_backend"
-require_relative "idempo/request_fingerprint"
-require_relative "idempo/memory_lock"
-require_relative "idempo/version"
+require "idempo/version"
 
 class Idempo
+  autoload :ConcurrentRequestErrorApp, "idempo/concurrent_request_error_app"
+  autoload :MalformedKeyErrorApp, "idempo/malformed_key_error_app"
+  autoload :MemoryBackend, "idempo/memory_backend"
+  autoload :RedisBackend, "idempo/redis_backend"
+  autoload :ActiveRecordBackend, "idempo/active_record_backend"
+  autoload :RequestFingerprint, "idempo/request_fingerprint"
+  autoload :MemoryLock, "idempo/memory_lock"
+
   DEFAULT_TTL_SECONDS = 30
   SAVED_RESPONSE_BODY_SIZE_LIMIT = 4 * 1024 * 1024
 
