@@ -10,7 +10,8 @@ instead of calling your application.
 Idempo supports a number of backends, we recommend using Redis if you have multiple application servers / dynos and MemoryBackend if you are only using one single Puma worker. To initialize with Redis as backend pass the `backend:` parameter when adding the middleware:
 
 ```ruby
-use Idempo, backend: Idempo::RedisBackend.new(Rails.application.config.redis_connection_pool)
+be = Idempo::RedisBackend.new(Rails.application.config.redis_connection_pool)
+use Idempo, backend: be
 ```
 
 and to initialize with a memory store as backend:
@@ -65,7 +66,8 @@ end
 Then configure Idempo to use the backend (in your `application.rb`):
 
 ```ruby
-config.middleware.insert Idempo, backend: Idempo::ActiveRecordBackend.new
+be = Idempo::ActiveRecordBackend.new
+config.middleware.insert Idempo, backend: be
 ```
 
 In your regular tasks (cron or Rake) you will want to add a call to delete old Idempo responses (there is an index on `expire_at`):
@@ -87,7 +89,8 @@ use Idempo, backend: Idempo::RedisBackend.new
 If you have a configured Redis connection pool (and you should) - pass it to the initializer:
 
 ```ruby
-config.middleware.insert Idempo, backend: Idempo::RedisBackend.new(config.redis_connection_pool)
+be = Idempo::RedisBackend.new(config.redis_connection_pool)
+config.middleware.insert Idempo, backend: be
 ```
 
 All data stored in Redis will have TTLs and will expire automatically. Redis scripts ensure that updates to the stored idempotent responses and locking happen atomically.
