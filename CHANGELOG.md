@@ -7,7 +7,7 @@
 
 - Use memory locking in addition to DB locking in `ActiveRecordBackend`
 
-## [1.1.0]
+## 1.1.0
 
 - Use modern ActiveRecord migration options for better Rails 7.x compatibility
 - Ensure Github actions CI can run and uses Postgres appropriately
