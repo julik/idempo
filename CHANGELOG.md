@@ -19,7 +19,7 @@
 
 - Release 1.0 as the API can be considered stable and the gem has been in production for years
 
-## [0.2.0]
+## 0.2.0
 
 - Allow setting the global default TTL for the cached responses
 - Allow customisation of the request key computation (so that the client can decide whether to include/exclude `Authorization` and the like)
