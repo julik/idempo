@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     env:
-      IDEMPO_RACK_VERSION: "2.0"
+      IDEMPO_RACK_VERSION: ${{ matrix.rack }}
     strategy:
       matrix:
         ruby:
