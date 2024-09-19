@@ -75,8 +75,8 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-          bundler-cache: false
-          bundler: 2.4 # Ruby 2.6-2.7 only works with Bundler 2.4
+          bundler-cache: true
+          # bundler: 2.4 # Ruby 2.6-2.7 only works with Bundler 2.4
       - name: RSpec with rack v2
         run: bundle exec rspec
         env:
