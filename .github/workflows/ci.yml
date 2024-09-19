@@ -76,8 +76,7 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          # bundler: 2.4 # Ruby 2.6-2.7 only works with Bundler 2.4
-      - name: RSpec with rack v2
+      - name: RSpec
         run: bundle exec rspec
         env:
           MYSQL_HOST: 127.0.0.1
