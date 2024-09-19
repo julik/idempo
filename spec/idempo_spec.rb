@@ -60,7 +60,7 @@ RSpec.describe Idempo do
   describe "when no double requests are in progress" do
     let(:app) do
       the_app = ->(env) {
-        [200, {"X-Foo" => "bar"}, [Random.new.bytes(15), env["rack.input"].read]]
+        [200, {"X-Foo" => "bar"}, [Random.new.bytes(15), env["rack.input"]&.read]]
       }
       Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
     end
