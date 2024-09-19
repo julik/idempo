@@ -37,11 +37,16 @@ jobs:
     name: Specs
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    env:
+      IDEMPO_RACK_VERSION: "2.0"
     strategy:
       matrix:
         ruby:
           - "2.7"
           - "3.2"
+        rack:
+          - "2.0"
+          - "3.0"
     services:
       mysql:
         image: mysql:5.7
@@ -65,10 +70,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
-        env:
-          IDEMPO_RACK_VERSION: "2.0"
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: false
@@ -76,24 +80,6 @@ jobs:
       - name: RSpec with rack v2
         run: bundle exec rspec
         env:
-          IDEMPO_RACK_VERSION: "2.0"
-          MYSQL_HOST: 127.0.0.1
-          MYSQL_PORT: 3306
-          PGHOST: localhost
-          PGUSER: postgres
-          PGPASSWORD: postgres
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        env:
-          IDEMPO_RACK_VERSION: "3.0"
-        with:
-          ruby-version: ${{ matrix.ruby }}
-          bundler-cache: false
-          bundler: 2.4 # Ruby 2.6-2.7 only works with Bundler 2.4
-      - name: RSpec with rack v3
-        run: bundle exec rspec
-        env:
-          IDEMPO_RACK_VERSION: "3.0"
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
           PGHOST: localhost
