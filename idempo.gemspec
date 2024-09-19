@@ -36,7 +36,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Uncomment to register a new dependency of your gem
-  spec.add_dependency "rack", "~> #{ENV.fetch('IDEMPO_RACK_VERSION', '3.0')}"
+  spec.add_dependency "rack", "~> #{ENV.fetch("IDEMPO_RACK_VERSION", "3.0")}"
   spec.add_dependency "msgpack"
   spec.add_dependency "measurometer", "~> 1.3"
 
@@ -45,7 +45,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "redis", "~> 4"
   spec.add_development_dependency "rack-test"
   spec.add_development_dependency "activerecord"
-  #spec.add_development_dependency "mysql2"
+  spec.add_development_dependency "mysql2"
   spec.add_development_dependency "pg"
   spec.add_development_dependency "standard"
 
