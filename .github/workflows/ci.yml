@@ -70,18 +70,19 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - name: RSpec with rack v3
+      - name: RSpec with rack v2
         run: bundle exec rspec
         env:
+          IDEMPO_RACK_VERSION: "2.0"
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
           PGHOST: localhost
           PGUSER: postgres
           PGPASSWORD: postgres
-      - name: RSpec with rack v2
+      - name: RSpec with rack v3
         run: bundle exec rspec
         env:
-          IDEMPO_RACK_VERSION: "2.0"
+          IDEMPO_RACK_VERSION: "3.0"
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
           PGHOST: localhost
