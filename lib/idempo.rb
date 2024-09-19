@@ -7,6 +7,7 @@ require "measurometer"
 require "msgpack"
 require "zlib"
 require "set"
+require 'rack'
 
 require "idempo/version"
 
@@ -55,9 +56,11 @@ class Idempo
       end
 
       status, headers, body = @app.call(env)
-      # `body` could be of type `ActionDispatch::Response::RackBody` and idempo will not even attempt to store it,
-      # we're converting ActionDispatch::Response::RackBody to a storable array format.
-      body = body.try(:to_ary) || body
+      if Gem::Version.new(Rack.release) >= Gem::Version.new('3.0')
+        # `body` could be of type `ActionDispatch::Response::RackBody` and idempo will not even attempt to store it,
+        # we're converting ActionDispatch::Response::RackBody to a storable array format.
+        body = body.try(:to_ary) if body.respond_to?(:to_ary)
+      end
 
       expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
       if response_may_be_persisted?(status, headers, body)
