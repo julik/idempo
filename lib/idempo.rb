@@ -7,7 +7,7 @@ require "measurometer"
 require "msgpack"
 require "zlib"
 require "set"
-require 'rack'
+require "rack"
 
 require "idempo/version"
 
@@ -56,7 +56,7 @@ class Idempo
       end
 
       status, headers, body = @app.call(env)
-      if Gem::Version.new(Rack.release) >= Gem::Version.new('3.0')
+      if Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
         # `body` could be of type `ActionDispatch::Response::RackBody` and idempo will not even attempt to store it,
         # we're converting ActionDispatch::Response::RackBody to a storable array format.
         body = body.try(:to_ary) if body.respond_to?(:to_ary)
