@@ -62,7 +62,7 @@ class Idempo
       # In some cases `body` could respond to to_ary. In this case, we don't need to call .close on body afterwards.
       #
       # @see https://github.com/rack/rack/blob/main/SPEC.rdoc#the-body-
-      body = body.try(:to_ary) if rack_v3? && body.respond_to?(:to_ary)
+      body = body.to_ary if rack_v3? && body.respond_to?(:to_ary)
 
       if response_may_be_persisted?(status, headers, body)
         # Body is replaced with a cached version since a Rack response body is not rewindable
