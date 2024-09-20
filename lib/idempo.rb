@@ -115,6 +115,7 @@ class Idempo
     # does not
     [deflated_message_packed_str, body_chunks]
   ensure
+    # This will not be applied to response bodies of Array type.
     rack_response_body.close if rack_response_body.respond_to?(:close)
   end
 
