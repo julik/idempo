@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rack/test"
+require "rack/lint"
 require "spec_helper"
 
 RSpec.describe Idempo do
@@ -19,7 +20,7 @@ RSpec.describe Idempo do
         end
         [200, {"X-Foo" => "bar", "Content-Length" => "9999999999999"}, body]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "does not provide idempotency for POST requests" do
@@ -77,7 +78,7 @@ RSpec.describe Idempo do
         big_blob = Random.new.bytes(5 * 1024 * 1024)
         [200, {"X-Foo" => "bar"}, [Random.new.bytes(13), big_blob]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "does not provide idempotency for POST requests" do
@@ -98,7 +99,7 @@ RSpec.describe Idempo do
       the_app = ->(env) {
         [200, {"X-Foo" => "bar"}, [Random.new.bytes(15), env["rack.input"]&.read]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "provides idempotency for POST requests" do
@@ -235,7 +236,7 @@ RSpec.describe Idempo do
           @counter += 1
           [200, {}, [Random.new.bytes(15)]]
         }
-        Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+        Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
       end
 
       it "only executes the side effect once" do
@@ -252,7 +253,7 @@ RSpec.describe Idempo do
       the_app = ->(env) {
         [200, {"X-Idempo-Policy" => "no-store"}, [Random.new.bytes(15), env["rack.input"].read]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "does not retain the request" do
@@ -271,7 +272,7 @@ RSpec.describe Idempo do
       the_app = ->(env) {
         [200, {"X-Idempo-Persist-For-Seconds" => "2"}, [Random.new.bytes(15), env["rack.input"].read]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "sets the expires_after to the requisite value" do
@@ -297,7 +298,7 @@ RSpec.describe Idempo do
         overridden_status = env.fetch("HTTP_STATUS_OVERRIDE").to_i
         [overridden_status, {"X-Foo" => "bar"}, [Random.new.bytes(15)]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "does not save the response for 5xx responses" do
@@ -342,7 +343,7 @@ RSpec.describe Idempo do
       the_app = ->(_env) {
         raise "Something bad happened"
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "re-raises the exception" do
@@ -358,7 +359,7 @@ RSpec.describe Idempo do
         Fiber.yield
         [200, {}, ["Hello from slow request"]]
       }
-      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+      Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
     it "responds to a concurrent request with a 429" do

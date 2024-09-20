@@ -45,8 +45,8 @@ jobs:
           - "2.7"
           - "3.2"
         rack:
-          - "2.0"
           - "3.0"
+          - "2.0"
     services:
       mysql:
         image: mysql:5.7
