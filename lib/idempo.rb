@@ -58,13 +58,13 @@ class Idempo
       status, headers, body = @app.call(env)
 
       expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
-      if response_may_be_persisted?(status, headers, body)
-        if Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
-          # `body` could be of type `ActionDispatch::Response::RackBody` and idempo will not even attempt to store it,
-          # we're converting ActionDispatch::Response::RackBody to a storable array format.
-          body = body.try(:to_ary) || body if !body.is_a?(Array) && !body.is_a?(Enumerator)
-        end
 
+      # In some cases `body` could respond to to_ary. In this case, we don't need to call .close on body afterwards.
+      #
+      # @see https://github.com/rack/rack/blob/main/SPEC.rdoc#the-body-
+      body = body.try(:to_ary) if rack_v3? && body.respond_to?(:to_ary)
+
+      if response_may_be_persisted?(status, headers, body)
         # Body is replaced with a cached version since a Rack response body is not rewindable
         marshaled_response, body = serialize_response(status, headers, body)
         store.store(data: marshaled_response, ttl: expires_in_seconds)
@@ -82,6 +82,10 @@ class Idempo
   end
 
   private
+
+  def rack_v3?
+    Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
+  end
 
   def from_persisted_response(marshaled_response)
     if marshaled_response[-2..] != ":1"
@@ -124,7 +128,7 @@ class Idempo
   def body_size_within_limit?(response_headers, body)
     return response_headers["Content-Length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT if response_headers["Content-Length"]
 
-    return false unless body.is_a?(Array) || body.respond_to?(:to_ary) # Arbitrary iterable of unknown size
+    return false unless body.is_a?(Array) # Arbitrary iterable of unknown size
 
     sum_of_string_bytesizes(body) <= SAVED_RESPONSE_BODY_SIZE_LIMIT
   end
