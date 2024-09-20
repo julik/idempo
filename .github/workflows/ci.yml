@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         ruby:
-          - '2.7'
+          - "2.7"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,11 +37,16 @@ jobs:
     name: Specs
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    env:
+      IDEMPO_RACK_VERSION: ${{ matrix.rack }}
     strategy:
       matrix:
         ruby:
-          - '2.7'
-          - '3.2'
+          - "2.7"
+          - "3.2"
+        rack:
+          - "2.0"
+          - "3.0"
     services:
       mysql:
         image: mysql:5.7
@@ -65,6 +70,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:

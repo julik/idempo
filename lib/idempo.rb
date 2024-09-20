@@ -7,6 +7,7 @@ require "measurometer"
 require "msgpack"
 require "zlib"
 require "set"
+require "rack"
 
 require "idempo/version"
 
@@ -57,6 +58,12 @@ class Idempo
       status, headers, body = @app.call(env)
 
       expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
+
+      # In some cases `body` could respond to to_ary. In this case, we don't need to call .close on body afterwards.
+      #
+      # @see https://github.com/rack/rack/blob/main/SPEC.rdoc#the-body-
+      body = body.to_ary if rack_v3? && body.respond_to?(:to_ary)
+
       if response_may_be_persisted?(status, headers, body)
         # Body is replaced with a cached version since a Rack response body is not rewindable
         marshaled_response, body = serialize_response(status, headers, body)
@@ -75,6 +82,10 @@ class Idempo
   end
 
   private
+
+  def rack_v3?
+    Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
+  end
 
   def from_persisted_response(marshaled_response)
     if marshaled_response[-2..] != ":1"
@@ -104,6 +115,7 @@ class Idempo
     # does not
     [deflated_message_packed_str, body_chunks]
   ensure
+    # This will not be applied to response bodies of Array type.
     rack_response_body.close if rack_response_body.respond_to?(:close)
   end
 
