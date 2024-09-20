@@ -35,6 +35,42 @@ RSpec.describe Idempo do
     end
   end
 
+  describe "with a response body that supports only 'to_ary'" do
+    body_class = Class.new do
+      def to_ary
+        ["one", "two", Random.new.bytes(8)]
+      end
+
+      def each
+        raise "Should never be called because if to_ary is used each is ignored"
+      end
+
+      def close
+        raise "Should never be called because if to_ary is used it is assumed to have closed by itself"
+      end
+    end
+
+    let(:app) do
+      the_app = ->(env) {
+        [200, {"X-Foo" => "bar"}, body_class.new]
+      }
+      Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
+    end
+
+    it "provides idempotency for POST requests and correctly persists the body" do
+      post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
+      expect(last_response).to be_ok
+      expect(last_response.headers["X-Foo"]).to eq("bar")
+      first_response_body = last_response.body
+      expect(first_response_body).to start_with("one")
+
+      post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
+      expect(last_response).to be_ok
+      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.body).to eq(first_response_body) # Response should be reused
+    end
+  end
+
   describe "with a very large response body which is materialized into an array of strings" do
     let(:app) do
       the_app = ->(_env) {

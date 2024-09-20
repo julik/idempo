@@ -1,3 +1,7 @@
+## 1.2.2
+
+- Support `#to_ary` on Rack response bodies on newer Rails/Rack versions
+
 ## 1.2.1
 
 - Use autoloading for internal modules. A user using Redis does not have to load the ActiveRecord storage backend, for example
