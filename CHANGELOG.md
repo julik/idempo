@@ -1,3 +1,6 @@
+## 1.2.3
+- Return `rack` gem as a main dependency.
+
 ## 1.2.2
 
 - Support `#to_ary` on Rack response bodies on newer Rails/Rack versions
