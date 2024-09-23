@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "msgpack"
   spec.add_dependency "measurometer", "~> 1.3"
-  spec.add_dependency "rack"
+  spec.add_dependency "rack", ">= 2.0"
 
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.0"
