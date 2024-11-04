@@ -11,14 +11,27 @@ RSpec.describe Idempo do
 
   include Rack::Test::Methods
 
+  class PreSizedBody
+    def initialize(size_in_bytes, rng = Random.new)
+      @rng = rng
+      @bytes = size_in_bytes
+    end
+
+    def each
+      buf_size = 4 * 1024 * 1024
+      whole, rest = @bytes.divmod(buf_size)
+      whole.times do
+        yield(@rng.bytes(buf_size))
+      end
+      yield(@rng.bytes(rest)) if rest > 0
+    end
+  end
+
   describe "with a very large response body" do
     let(:app) do
       the_app = ->(env) {
-        body = Enumerator.new do |yielder|
-          yielder.yield(Random.new.bytes(15))
-          yielder.yield(env["rack.input"].read)
-        end
-        [200, {"x-foo" => "bar", "content-length" => "9999999999999"}, body]
+        pre_sized_body = PreSizedBody.new(999999999)
+        [200, {"x-foo" => "bar", "content-length" => "999999999"}, pre_sized_body]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
