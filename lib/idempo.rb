@@ -124,10 +124,15 @@ class Idempo
   end
 
   def body_size_within_limit?(response_headers, body)
-    return response_headers["Content-Length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT if response_headers["Content-Length"]
+    lowercase_response_headers = response_headers.map do |(k, v)|
+      [k.downcase, v]
+    end.to_h
+
+    if response_headers["content-length"]
+      return lowercase_response_headers["content-length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT
+    end
 
     return false unless body.is_a?(Array) # Arbitrary iterable of unknown size
-
     sum_of_string_bytesizes(body) <= SAVED_RESPONSE_BODY_SIZE_LIMIT
   end
 

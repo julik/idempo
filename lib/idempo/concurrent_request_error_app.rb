@@ -8,6 +8,6 @@ class Idempo::ConcurrentRequestErrorApp
         message: "Another request with this idempotency key is still in progress, please try again later"
       }
     }
-    [429, {"Retry-After" => RETRY_AFTER_SECONDS, "Content-Type" => "application/json"}, [JSON.pretty_generate(res)]]
+    [429, {"retry-after" => RETRY_AFTER_SECONDS, "content-type" => "application/json"}, [JSON.pretty_generate(res)]]
   end
 end

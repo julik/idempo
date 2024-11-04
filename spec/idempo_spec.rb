@@ -18,7 +18,7 @@ RSpec.describe Idempo do
           yielder.yield(Random.new.bytes(15))
           yielder.yield(env["rack.input"].read)
         end
-        [200, {"X-Foo" => "bar", "Content-Length" => "9999999999999"}, body]
+        [200, {"x-foo" => "bar", "content-length" => "9999999999999"}, body]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
@@ -26,12 +26,12 @@ RSpec.describe Idempo do
     it "does not provide idempotency for POST requests" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
   end
@@ -53,7 +53,7 @@ RSpec.describe Idempo do
 
     let(:app) do
       the_app = ->(env) {
-        [200, {"X-Foo" => "bar"}, body_class.new]
+        [200, {"x-foo" => "bar"}, body_class.new]
       }
       Idempo.new(the_app, backend: Idempo::MemoryBackend.new)
     end
@@ -61,13 +61,13 @@ RSpec.describe Idempo do
     it "provides idempotency for POST requests and correctly persists the body" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
       expect(first_response_body).to start_with("one")
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).to eq(first_response_body) # Response should be reused
     end
   end
@@ -76,7 +76,7 @@ RSpec.describe Idempo do
     let(:app) do
       the_app = ->(_env) {
         big_blob = Random.new.bytes(5 * 1024 * 1024)
-        [200, {"X-Foo" => "bar"}, [Random.new.bytes(13), big_blob]]
+        [200, {"x-foo" => "bar"}, [Random.new.bytes(13), big_blob]]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
@@ -84,12 +84,12 @@ RSpec.describe Idempo do
     it "does not provide idempotency for POST requests" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
   end
@@ -97,7 +97,13 @@ RSpec.describe Idempo do
   describe "when no double requests are in progress" do
     let(:app) do
       the_app = ->(env) {
-        [200, {"X-Foo" => "bar"}, [Random.new.bytes(15), env["rack.input"]&.read]]
+        body = if env["REQUEST_METHOD"] == "HEAD"
+          []
+        else
+          [Random.new.bytes(15), env["rack.input"]&.read]
+        end
+
+        [200, {"x-foo" => "bar"}, body]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
@@ -105,48 +111,48 @@ RSpec.describe Idempo do
     it "provides idempotency for POST requests" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).to eq(first_response_body) # response should have been reused
     end
 
     it "provides idempotency for POST requests with the same HTTP auth" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_AUTHORIZATION" => "Bearer abc"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_AUTHORIZATION" => "Bearer abc"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).to eq(first_response_body) # response should have been reused
     end
 
     it "adds the Authorization: header to the idempotency key fingerprint" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_AUTHORIZATION" => "Bearer abc"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_AUTHORIZATION" => "Bearer mno"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "provides idempotency for POST requests with both quoted and unquoted header value" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => '"idem"'
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).to eq(first_response_body) # response should have been reused
     end
 
@@ -161,7 +167,7 @@ RSpec.describe Idempo do
     it "is not idempotent if the HTTP verb is different" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       patch "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
@@ -172,60 +178,60 @@ RSpec.describe Idempo do
     it "is not idempotent if the request body is different" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata2", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "is not idempotent if the URL is different" do
       post "/some", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/another", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "is not saved if the request is a GET" do
       get "/some", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       get "/some", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "is not saved if the request is a HEAD" do
       head "/some", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       head "/some", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "is not idempotent without the idempotency key" do
       post "/", "somedata"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
@@ -296,7 +302,7 @@ RSpec.describe Idempo do
     let(:app) do
       the_app = ->(env) {
         overridden_status = env.fetch("HTTP_STATUS_OVERRIDE").to_i
-        [overridden_status, {"X-Foo" => "bar"}, [Random.new.bytes(15)]]
+        [overridden_status, {"x-foo" => "bar"}, [Random.new.bytes(15)]]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
@@ -304,36 +310,36 @@ RSpec.describe Idempo do
     it "does not save the response for 5xx responses" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "500"
       expect(last_response).not_to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "200"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "does not save the response for 425 responses" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "425"
       expect(last_response).not_to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "200"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
     it "does not save the response for 429 responses" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "429"
       expect(last_response).not_to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       first_response_body = last_response.body
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem", "HTTP_STATUS_OVERRIDE" => "200"
       expect(last_response).to be_ok
-      expect(last_response.headers["X-Foo"]).to eq("bar")
+      expect(last_response.headers["x-foo"]).to eq("bar")
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
   end
