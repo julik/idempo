@@ -59,10 +59,11 @@ class Idempo
 
       expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
 
-      # In some cases `body` could respond to to_ary. In this case, we don't need to call .close on body afterwards.
+      # In some cases `body` could respond to to_ary. In this case, we don't need to
+      # call .close on the body afterwards, as it is supposed to self-close as per Rack 3.0 SPEC
       #
       # @see https://github.com/rack/rack/blob/main/SPEC.rdoc#the-body-
-      body = body.to_ary if rack_v3? && body.respond_to?(:to_ary)
+      body = body.to_ary if body.respond_to?(:to_ary)
 
       if response_may_be_persisted?(status, headers, body)
         # Body is replaced with a cached version since a Rack response body is not rewindable
@@ -82,10 +83,6 @@ class Idempo
   end
 
   private
-
-  def rack_v3?
-    Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
-  end
 
   def from_persisted_response(marshaled_response)
     if marshaled_response[-2..] != ":1"
