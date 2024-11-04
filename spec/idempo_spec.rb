@@ -36,16 +36,17 @@ RSpec.describe Idempo do
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
 
-    it "does not provide idempotency for POST requests" do
+    it "does not cache the response body" do
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
       expect(last_response.headers["x-foo"]).to eq("bar")
-      first_response_body = last_response.body
+      first_response_body_digest = Digest::SHA1.hexdigest(last_response.body)
 
       post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
       expect(last_response.headers["x-foo"]).to eq("bar")
-      expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
+      second_response_body_digest = Digest::SHA1.hexdigest(last_response.body)
+      expect(second_response_body_digest).not_to eq(first_response_body_digest)
     end
   end
 
