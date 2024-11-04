@@ -11,22 +11,6 @@ RSpec.describe Idempo do
 
   include Rack::Test::Methods
 
-  class PreSizedBody
-    def initialize(size_in_bytes, rng = Random.new)
-      @rng = rng
-      @bytes = size_in_bytes
-    end
-
-    def each
-      buf_size = 4 * 1024 * 1024
-      whole, rest = @bytes.divmod(buf_size)
-      whole.times do
-        yield(@rng.bytes(buf_size))
-      end
-      yield(@rng.bytes(rest)) if rest > 0
-    end
-  end
-
   describe "with a very large response body" do
     let(:app) do
       the_app = ->(env) {
