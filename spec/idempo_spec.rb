@@ -98,7 +98,11 @@ RSpec.describe Idempo do
         body = if env["REQUEST_METHOD"] == "HEAD"
           []
         else
-          [Random.new.bytes(15), env["rack.input"]&.read]
+          # The input has to be read and converted to a String
+          # explicitly here, since an empty request body would
+          # return a `nil` when reading. Yielding `nil`s as part
+          # of the enumerable response body is off-spec
+          [Random.new.bytes(15), env["rack.input"]&.read.to_s]
         end
 
         [200, {"x-foo" => "bar"}, body]
