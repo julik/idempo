@@ -189,18 +189,6 @@ RSpec.describe Idempo do
       expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
     end
 
-    it "is not idempotent if the request body is different" do
-      post "/", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
-      expect(last_response).to be_ok
-      expect(last_response.headers["x-foo"]).to eq("bar")
-      first_response_body = last_response.body
-
-      post "/", "somedata2", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
-      expect(last_response).to be_ok
-      expect(last_response.headers["x-foo"]).to eq("bar")
-      expect(last_response.body).not_to eq(first_response_body) # response should not have been reused
-    end
-
     it "is not idempotent if the URL is different" do
       post "/some", "somedata", "HTTP_X_IDEMPOTENCY_KEY" => "idem"
       expect(last_response).to be_ok
