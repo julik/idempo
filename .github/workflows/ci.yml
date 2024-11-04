@@ -42,9 +42,6 @@ jobs:
         ruby:
           - "2.7"
           - "3.2"
-        rack:
-          - "3.0"
-          - "2.0"
     services:
       mysql:
         image: mysql:5.7
@@ -74,8 +71,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - name: RSpec
-        run: bundle exec rspec
+      - name: RSpec via Appraisal
+        run: bundle exec appraisal
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
