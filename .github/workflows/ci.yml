@@ -71,7 +71,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - name: RSpec via Appraisal
-        run: bundle exec appraisal && bundle exec rake
+        run: bundle exec rspec
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
