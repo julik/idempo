@@ -34,7 +34,7 @@ jobs:
       - name: Standard (Lint)
         run: bundle exec rake standard
   test:
-    name: Specs
+    name: "Specs (Rack 2 and 3)"
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
