@@ -15,7 +15,7 @@ RSpec.describe Idempo do
     let(:app) do
       the_app = ->(env) {
         pre_sized_body = PreSizedBody.new(999999999)
-        [200, {"x-foo" => "bar", "content-length" => "999999999"}, pre_sized_body]
+        [200, {"x-foo" => "bar", "content-length" => pre_sized_body.bytes.to_s}, pre_sized_body]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
