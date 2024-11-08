@@ -55,9 +55,10 @@ class Idempo
         return from_persisted_response(stored_response)
       end
 
-      status, headers, body = @app.call(env)
+      status, raw_headers, body = @app.call(env)
+      headers = downcase_keys(raw_headers)
 
-      expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
+      expires_in_seconds = (headers.delete("x-idempo-persist-for-seconds") || @persist_for_seconds).to_i
 
       # In some cases `body` could respond to to_ary. In this case, we don't need to
       # call .close on the body afterwards, as it is supposed to self-close as per Rack 3.0 SPEC
@@ -83,6 +84,12 @@ class Idempo
   end
 
   private
+
+  def downcase_keys(raw_headers)
+    raw_headers.each_with_object({}) do |(name, value), hh|
+      hh[name.to_s.downcase] = value
+    end
+  end
 
   def from_persisted_response(marshaled_response)
     if marshaled_response[-2..] != ":1"
@@ -117,19 +124,15 @@ class Idempo
   end
 
   def response_may_be_persisted?(status, headers, body)
-    return false if headers.delete("X-Idempo-Policy") == "no-store"
+    return false if headers.delete("x-idempo-policy") == "no-store"
     return false unless status_may_be_persisted?(status)
     return false unless body_size_within_limit?(headers, body)
     true
   end
 
   def body_size_within_limit?(response_headers, body)
-    lowercase_response_headers = response_headers.map do |(k, v)|
-      [k.downcase, v]
-    end.to_h
-
     if response_headers["content-length"]
-      return lowercase_response_headers["content-length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT
+      return response_headers["content-length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT
     end
 
     return false unless body.is_a?(Array) # Arbitrary iterable of unknown size

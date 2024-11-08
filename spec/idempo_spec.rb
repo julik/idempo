@@ -235,7 +235,8 @@ RSpec.describe Idempo do
   describe "with an application that asks the idempotent request not to be stored" do
     let(:app) do
       the_app = ->(env) {
-        [200, {"X-Idempo-Policy" => "no-store"}, [Random.new.bytes(15), env["rack.input"].read]]
+        # Mix case to ensure case-insensitive matching is used
+        [200, {"X-IDempo-Policy" => "no-store"}, [Random.new.bytes(15), env["rack.input"].read]]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
@@ -254,7 +255,7 @@ RSpec.describe Idempo do
   describe "with an application that specifies the TTL for the idempotent request" do
     let(:app) do
       the_app = ->(env) {
-        [200, {"X-Idempo-Persist-For-Seconds" => "2"}, [Random.new.bytes(15), env["rack.input"].read]]
+        [200, {"x-idempo-persist-for-seconds" => "2"}, [Random.new.bytes(15), env["rack.input"].read]]
       }
       Rack::Lint.new(Idempo.new(the_app, backend: Idempo::MemoryBackend.new))
     end
