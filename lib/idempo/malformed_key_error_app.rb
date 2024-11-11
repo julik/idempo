@@ -6,6 +6,6 @@ class Idempo::MalformedKeyErrorApp
         message: "The Idempotency-Key header provided was empty or malformed"
       }
     }
-    [400, {"Content-Type" => "application/json"}, [JSON.pretty_generate(res)]]
+    [400, {"content-type" => "application/json"}, [JSON.pretty_generate(res)]]
   end
 end

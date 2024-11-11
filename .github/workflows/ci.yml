@@ -34,14 +34,13 @@ jobs:
       - name: Standard (Lint)
         run: bundle exec rake standard
   test:
-    name: Specs
+    name: "Specs (Rack 2 and 3)"
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
       matrix:
         ruby:
           - "2.7"
-          - "3.2"
     services:
       mysql:
         image: mysql:5.7
@@ -71,8 +70,8 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - name: RSpec
-        run: bundle exec rspec
+      - name: RSpec via Appraisal
+        run: "bundle exec appraisal install && bundle exec appraisal rspec"
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306

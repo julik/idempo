@@ -1,3 +1,7 @@
+## 1.3.0
+
+- Streamline integration with both Rack 2 and 3, add tests for request fingerprinting.
+
 ## 1.2.2
 
 - Support `#to_ary` on Rack response bodies on newer Rails/Rack versions

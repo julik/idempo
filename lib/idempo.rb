@@ -55,14 +55,16 @@ class Idempo
         return from_persisted_response(stored_response)
       end
 
-      status, headers, body = @app.call(env)
+      status, raw_headers, body = @app.call(env)
+      headers = downcase_keys(raw_headers)
 
-      expires_in_seconds = (headers.delete("X-Idempo-Persist-For-Seconds") || @persist_for_seconds).to_i
+      expires_in_seconds = (headers.delete("x-idempo-persist-for-seconds") || @persist_for_seconds).to_i
 
-      # In some cases `body` could respond to to_ary. In this case, we don't need to call .close on body afterwards.
+      # In some cases `body` could respond to to_ary. In this case, we don't need to
+      # call .close on the body afterwards, as it is supposed to self-close as per Rack 3.0 SPEC
       #
       # @see https://github.com/rack/rack/blob/main/SPEC.rdoc#the-body-
-      body = body.to_ary if rack_v3? && body.respond_to?(:to_ary)
+      body = body.to_ary if body.respond_to?(:to_ary)
 
       if response_may_be_persisted?(status, headers, body)
         # Body is replaced with a cached version since a Rack response body is not rewindable
@@ -83,8 +85,10 @@ class Idempo
 
   private
 
-  def rack_v3?
-    Gem::Version.new(Rack.release) >= Gem::Version.new("3.0")
+  def downcase_keys(raw_headers)
+    raw_headers.each_with_object({}) do |(name, value), hh|
+      hh[name.to_s.downcase] = value
+    end
   end
 
   def from_persisted_response(marshaled_response)
@@ -120,17 +124,18 @@ class Idempo
   end
 
   def response_may_be_persisted?(status, headers, body)
-    return false if headers.delete("X-Idempo-Policy") == "no-store"
+    return false if headers.delete("x-idempo-policy") == "no-store"
     return false unless status_may_be_persisted?(status)
     return false unless body_size_within_limit?(headers, body)
     true
   end
 
   def body_size_within_limit?(response_headers, body)
-    return response_headers["Content-Length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT if response_headers["Content-Length"]
+    if response_headers["content-length"]
+      return response_headers["content-length"].to_i <= SAVED_RESPONSE_BODY_SIZE_LIMIT
+    end
 
     return false unless body.is_a?(Array) # Arbitrary iterable of unknown size
-
     sum_of_string_bytesizes(body) <= SAVED_RESPONSE_BODY_SIZE_LIMIT
   end
 
