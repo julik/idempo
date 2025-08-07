@@ -82,13 +82,15 @@ class Idempo::ActiveRecordBackend
     # process) and then once we have that - the DB lock.
     @memory_lock.with(request_key) do
       db_safe_key = Digest::SHA1.base64digest(request_key)
-      database_lock = lock_implementation_for_connection(model.connection)
-      raise Idempo::ConcurrentRequest unless database_lock.acquire(model.connection, request_key)
+      ActiveRecord::Base.connection_pool.with_connection do |connection|
+        database_lock = lock_implementation_for_connection(connection)
+        raise Idempo::ConcurrentRequest unless database_lock.acquire(connection, request_key)
 
-      begin
-        yield(Store.new(db_safe_key, model))
-      ensure
-        database_lock.release(model.connection, request_key)
+        begin
+          yield(Store.new(db_safe_key, model))
+        ensure
+          database_lock.release(connection, request_key)
+        end
       end
     end
   end
