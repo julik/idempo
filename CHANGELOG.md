@@ -1,3 +1,8 @@
+## 1.3.1
+
+- Instead of retaining the ActiveRecord connection in Idempo operations, check it out temporarily from the AR pool.
+  This should improve interop with fibers/Async.
+
 ## 1.3.0
 
 - Streamline integration with both Rack 2 and 3, add tests for request fingerprinting.
