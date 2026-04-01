@@ -2,26 +2,15 @@
 # which includes some form of expiration. This means that every time a request is made, the `Authorization`
 # HTTP header may have a different value, and thus the request fingerprint could change every time,
 # even though the idempotency key is the same.
-# For this case, a custom fingerprinting function can be used. For example, if the bearer token is
-# generated in JWT format by the client, it may include the `iss` (issuer) claim, identifying the
-# specific device. This identifier can then be used instead of the entire Authorization header.
+# For this case, you can subclass Idempo::RequestFingerprint and override `extract_user_identity`.
+# For example, if the bearer token is generated in JWT format by the client, it may include the
+# `iss` (issuer) claim, identifying the specific device. This identifier can then be used instead
+# of the entire Authorization header.
 
-module FingerprinterWithIssuerClaim
-  def self.call(idempotency_key, rack_request)
-    d = Digest::SHA256.new
-    d << idempotency_key << "\n"
-    d << rack_request.url << "\n"
-    d << rack_request.request_method << "\n"
-    d << extract_jwt_iss_claim(rack_request) << "\n"
-    while (chunk = rack_request.env["rack.input"].read(1024 * 65))
-      d << chunk
-    end
-    Base64.strict_encode64(d.digest)
-  ensure
-    rack_request.env["rack.input"].rewind
-  end
+class JwtIssFingerprint < Idempo::RequestFingerprint
+  private
 
-  def self.extract_jwt_iss_claim(rack_request)
+  def extract_user_identity(rack_request)
     header_value = rack_request.get_header("HTTP_AUTHORIZATION").to_s
     return header_value unless header_value.start_with?("Bearer ")
 
@@ -39,3 +28,5 @@ module FingerprinterWithIssuerClaim
     SecureRandom.bytes(32)
   end
 end
+
+use Idempo, compute_fingerprint_via: JwtIssFingerprint.new
