@@ -1,3 +1,11 @@
+## 1.4.0
+
+- `RequestFingerprint` is now a class instead of a module, with an overridable `extract_user_identity` method.
+  The default implementation uses the `Authorization` header when present, and falls back to the Rails session
+  cookie (`_<appname>_session`) when it is not. This prevents cross-user response leakage for apps using
+  cookie-based authentication. For custom auth mechanisms, subclass `RequestFingerprint` and override
+  `extract_user_identity`. Backward compatible — the class still works as the default `compute_fingerprint_via:` value.
+
 ## 1.3.1
 
 - Instead of retaining the ActiveRecord connection in Idempo operations, check it out temporarily from the AR pool.
