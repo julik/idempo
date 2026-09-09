@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "active_record"
-require "mysql2"
+require "pg"
 require "spec_helper"
 require_relative "shared_backend_specs"
 
