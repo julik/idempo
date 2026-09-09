@@ -1,3 +1,22 @@
+## 1.5.0
+
+- Add SQLite support to `ActiveRecordBackend`. SQLite has no advisory locks, so the backend now ships a
+  `TokenLock` - a lease lock built on an atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE` into a new
+  `idempo_locks` table, with a random fencing token and an expiry. It is the same scheme the `RedisBackend`
+  uses, and it recovers by itself from a process killed while holding a lock. MySQL and PostgreSQL keep
+  using advisory locks and are unaffected.
+- Add a `rails g idempo:install` generator. It detects whether `idempo_responses` already exists and
+  generates a migration for only the tables you are missing, so existing installations get a migration
+  which adds `idempo_locks` alone.
+- `ActiveRecordBackend.create_table` is unchanged and still creates only `idempo_responses` - migrations
+  already committed against earlier versions of Idempo keep behaving exactly as before. The table
+  definitions are now also available individually as `create_responses_table` and `create_locks_table`.
+- `ActiveRecordBackend#prune!` also deletes abandoned lock rows.
+- `ActiveRecordBackend.new` accepts a `lock:` argument to override the lock implementation. Passing
+  `TokenLock` makes the backend usable through a transaction-pooling proxy such as PGBouncer, where
+  connection-bound advisory locks are not.
+- A response is no longer written when the lock lease expired while the request was being served.
+
 ## 1.4.0
 
 - `RequestFingerprint` is now a class instead of a module, with an overridable `extract_user_identity` method.
