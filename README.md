@@ -7,7 +7,7 @@ instead of calling your application.
 
 ## Usage
 
-Idempo supports a number of backends, we recommend using Redis if you have multiple application servers / dynos and MemoryBackend if you are only using one single Puma worker. To initialize with Redis as backend pass the `backend:` parameter when adding the middleware:
+Idempo supports a number of backends, we recommend using Redis if you have multiple application servers / dynos, the ActiveRecordBackend if you would rather not run Redis just for this (it works with MySQL, PostgreSQL and SQLite), and MemoryBackend if you are only using one single Puma worker. To initialize with Redis as backend pass the `backend:` parameter when adding the middleware:
 
 ```ruby
 be = Idempo::RedisBackend.new(Rails.application.config.redis_connection_pool)
@@ -47,21 +47,45 @@ Needless to say, if your server terminates or restarts all the data disappears w
 
 ## Using your database for idempotency keys (via ActiveRecord)
 
-The relational database you already have is a perfectly fine place to store idempotency key locks and responses. A requirement for that is that your database supports some form of advisory locking - both PostgreSQL and MySQL do. First you will need to create a table for the records. The table is going to be called `idempo_responses`, and you need to add a migration in your Rails project for it:
+The relational database you already have is a perfectly fine place to store idempotency key locks and responses. Idempo supports MySQL, PostgreSQL and SQLite. Idempo stores its data in two tables - `idempo_responses` and `idempo_locks` - and ships a generator which creates the migration for them:
 
 ```bash
-$ rails g migration add_idempo_responses
+$ rails g idempo:install
+$ rails db:migrate
 ```
 
-and then add a migration like this:
+If you are already using Idempo you will have the `idempo_responses` table from an earlier version. The generator detects this and writes a migration which only adds the table you are missing:
+
+```
+$ rails g idempo:install
+      idempo  idempo_responses is already present, creating idempo_locks only
+      create  db/migrate/20240115120000_add_idempo_locks.rb
+```
+
+Detection queries your database, and falls back to reading `db/schema.rb` (or `db/structure.sql`) when there is no database to connect to. You can always override it with `--locks-only` or `--no-locks-only`.
+
+If you would rather write the migration by hand, the two table definitions are available separately. For a new installation:
 
 ```ruby
-class AddIdempoResponses < ActiveRecord::Migration[7.0]
+class InstallIdempo < ActiveRecord::Migration[7.0]
   def change
-    Idempo::ActiveRecordBackend.create_table(self)
+    Idempo::ActiveRecordBackend.create_responses_table(self)
+    Idempo::ActiveRecordBackend.create_locks_table(self)
   end
 end
 ```
+
+and for an installation which already has `idempo_responses`:
+
+```ruby
+class AddIdempoLocks < ActiveRecord::Migration[7.0]
+  def change
+    Idempo::ActiveRecordBackend.create_locks_table(self)
+  end
+end
+```
+
+`Idempo::ActiveRecordBackend.create_table` still creates just `idempo_responses`, exactly as it did in earlier versions - migrations you have already committed keep working and keep meaning the same thing.
 
 Then configure Idempo to use the backend (in your `application.rb`):
 
@@ -70,13 +94,52 @@ be = Idempo::ActiveRecordBackend.new
 config.middleware.insert Idempo, backend: be
 ```
 
-In your regular tasks (cron or Rake) you will want to add a call to delete old Idempo responses (there is an index on `expire_at`):
+In your regular tasks (cron or Rake) you will want to add a call to delete old Idempo responses and abandoned locks (both tables have an index on `expire_at`):
 
 ```ruby
 Idempo::ActiveRecordBackend.new.prune!
 ```
 
-If you need to use Idempo with PGBouncer you will need to write your own locking implementation based on fencing tokens or similar.
+### How locking works per database
+
+Idempo picks the locking strategy from your database adapter:
+
+* **MySQL** uses `GET_LOCK` / `RELEASE_LOCK` advisory locks
+* **PostgreSQL** uses `pg_try_advisory_lock` / `pg_advisory_unlock` advisory locks
+* **SQLite** has no advisory locks, so it uses the `TokenLock` - see below
+
+Advisory locks are held by the database connection, so they are released the moment the connection goes away - which makes them ideal, but also makes them unusable through a transaction-pooling proxy such as PGBouncer. If that is your setup, pass the `TokenLock` explicitly:
+
+```ruby
+be = Idempo::ActiveRecordBackend.new(lock: Idempo::ActiveRecordBackend::TokenLock.new)
+```
+
+### Using SQLite
+
+SQLite has no advisory locks and only one writer at a time, but it does apply a single `INSERT ... ON CONFLICT DO UPDATE ... WHERE` statement atomically - and that is all a lease lock needs. The `TokenLock` inserts a row with a random fencing token into `idempo_locks`; the unique index on the request key is what makes the acquisition mutually exclusive. It is the same scheme the `RedisBackend` uses (`SET NX PX` plus a token), only expressed in SQL:
+
+* Acquiring the lock is one statement which inserts when no lock row exists, overwrites the row when the previous lease has expired, and does nothing at all when somebody else holds the lock. Idempo then raises `ConcurrentRequest`, exactly like it does for a contended advisory lock.
+* The lock row carries an expiry (`Idempo::ActiveRecordBackend::LOCK_TTL_SECONDS`, 5 minutes by default), so a lock left behind by a killed process gets taken over by a later request instead of wedging that idempotency key forever.
+* Releasing deletes only a row still carrying our own token, so we never release a lock somebody else has taken over.
+* If the lease does expire while your `app.call` is still running, the response is not written at all - another request may have generated a different response under the same key in the meantime, and overwriting it would be worse than not caching.
+
+Nothing beyond the migration is required, but two settings in your `database.yml` are worth having:
+
+```yaml
+production:
+  adapter: sqlite3
+  database: storage/production.sqlite3
+  timeout: 5000  # Wait up to 5s for the write lock instead of raising SQLITE_BUSY
+```
+
+and WAL mode, so that reading a cached response does not block on the process currently writing one:
+
+```ruby
+# config/initializers/sqlite.rb, if your Rails version does not do this already
+ActiveRecord::Base.connection.execute("PRAGMA journal_mode=WAL") if ActiveRecord::Base.connection.adapter_name.match?(/sqlite/i)
+```
+
+Rails 7.1 and newer set `journal_mode=WAL` for new applications by default, and starting with Rails 7.1 the SQLite adapter also opens write transactions with `BEGIN IMMEDIATE`. Idempo does not depend on either - it orders the statements in its write transaction so that the write lock is taken by the first statement - but WAL will make a meaningful difference to your throughput.
 
 ## Using Redis for idempotency keys
 

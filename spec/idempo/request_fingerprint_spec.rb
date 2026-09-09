@@ -2,7 +2,6 @@
 
 require "spec_helper"
 require_relative "shared_backend_specs"
-require "redis"
 
 RSpec.describe Idempo::RequestFingerprint do
   it "computes a stable fingerprint based on key headers and rewindable body IO" do

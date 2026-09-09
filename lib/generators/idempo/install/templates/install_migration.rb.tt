@@ -1,0 +1,8 @@
+class <%= migration_class_name %> < ActiveRecord::Migration<%= migration_version %>
+  def change
+<% unless locks_only? -%>
+    Idempo::ActiveRecordBackend.create_responses_table(self)
+<% end -%>
+    Idempo::ActiveRecordBackend.create_locks_table(self)
+  end
+end

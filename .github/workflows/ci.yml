@@ -33,6 +33,36 @@ jobs:
             ${{ runner.os }}-rubocop-
       - name: Standard (Lint)
         run: bundle exec rake standard
+  sqlite:
+    name: "Specs without a database server (SQLite)"
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - "3.1"
+          - "3.2"
+          - "3.3"
+          - "3.4"
+    # Deliberately no `services:` here, and the mysql2/pg/redis clients are not even
+    # installed. SQLite users run Idempo on a box with no database server anywhere near
+    # it, and this job proves that actually works.
+    env:
+      BUNDLE_WITHOUT: db_servers
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          # The committed lockfiles say "BUNDLED WITH 2.1.4", which does not run on Ruby 3.x
+          bundler: latest
+      - name: RSpec (SQLite backend, install generator and everything server-free)
+        run: bundle exec rspec --exclude-pattern "**/*{mysql,postgres,redis}*_spec.rb"
+
   test:
     name: "Specs (Rack 2 and 3)"
     runs-on: ubuntu-22.04
