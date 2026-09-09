@@ -1,15 +1,20 @@
 ## 1.6.0
 
-- Drop support for Ruby 2.x and raise `required_ruby_version` to `>= 3.3.0` - the lowest Ruby
-  release still receiving maintenance. Ruby 2.7 has been end of life since March 2023, and
-  nothing has ever tested the 2.4-2.6 the gemspec previously claimed. Applications on older
-  Rubies resolve to Idempo 1.5.0, which already has the SQLite backend.
+- Drop support for Ruby 2.x and raise `required_ruby_version` to `>= 3.0.0`. Ruby 2.7 has been
+  end of life since March 2023, and nothing has ever tested the 2.4-2.6 the gemspec previously
+  claimed. The floor stays at 3.0 rather than the oldest maintained Ruby on purpose - Idempo
+  itself needs nothing newer, and applications on Rails 7.x run on older Rubies. Applications
+  on Ruby 2.x resolve to Idempo 1.5.0, which already has the SQLite backend.
 - Test against the latest released Rails instead of pinning old versions. ActiveRecord and
   railties are no longer pinned in `Appraisals` - every Rails in the previous matrix (6.1 and
   7.1) had been end of life for a year or more, while the current release was not covered at
   all. The two appraisals now cover the only thing Idempo declares a runtime dependency on:
   Rack 2 versus Rack 3.
-- CI runs on Ruby 3.3 (the oldest maintained release) and Ruby 4.0.
+- CI runs on Ruby 3.0 (the oldest the gemspec allows) and Ruby 4.0. On 3.0 Bundler resolves the
+  newest Rails that still runs there, on 4.0 it resolves the current release.
+- The Appraisal lockfiles are no longer checked in. They pinned Bundler to the version that
+  generated them (2.1.4), which cannot run on Ruby 3.x or 4.x; `appraisal install` regenerates
+  them. This matches what `.gitignore` already said about lockfiles not being needed here.
 
 Note that ActiveRecord is not a runtime dependency of Idempo - it is required lazily by
 `ActiveRecordBackend`. Nothing in this release changes which databases or Rails versions the

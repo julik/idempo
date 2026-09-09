@@ -6,7 +6,6 @@ on:
 
 env:
   BUNDLE_PATH: vendor/bundle
-  # The committed lockfiles say "BUNDLED WITH 2.1.4", which cannot run on Ruby 3.x or 4.x
 
 jobs:
   lint:
@@ -17,7 +16,7 @@ jobs:
       matrix:
         ruby:
           # The style target comes from .standard.yml, so one Ruby is enough here
-          - "3.3"
+          - "3.4"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,7 +25,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          bundler: latest
       - name: Rubocop Cache
         uses: actions/cache@v3
         with:
@@ -44,7 +42,10 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - "3.3"
+          # The oldest Ruby the gemspec allows, and the newest released one. On 3.0
+          # Bundler resolves the newest Rails that still runs there (7.1); on 4.0 it
+          # resolves the current release.
+          - "3.0"
           - "4.0"
     # Deliberately no `services:` here, and the mysql2/pg/redis clients are not even
     # installed. SQLite users run Idempo on a box with no database server anywhere near
@@ -59,7 +60,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          bundler: latest
       - name: RSpec (SQLite backend, install generator and everything server-free)
         run: bundle exec rspec --exclude-pattern "**/*{mysql,postgres,redis}*_spec.rb"
 
@@ -71,7 +71,10 @@ jobs:
       fail-fast: false
       matrix:
         ruby:
-          - "3.3"
+          # The oldest Ruby the gemspec allows, and the newest released one. On 3.0
+          # Bundler resolves the newest Rails that still runs there (7.1); on 4.0 it
+          # resolves the current release.
+          - "3.0"
           - "4.0"
     services:
       mysql:
@@ -102,7 +105,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          bundler: latest
       - name: RSpec via Appraisal
         run: "bundle exec appraisal install && bundle exec appraisal rspec"
         env:

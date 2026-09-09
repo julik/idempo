@@ -29,7 +29,7 @@ class Idempo::RedisBackend
     end
   EOL
 
-  class Store < Struct.new(:redis_pool, :key, :lock_redis_key, :lock_token)
+  class Store < Struct.new(:redis_pool, :key, :lock_redis_key, :lock_token, keyword_init: true)
     def lookup
       response_redis_key = "idempo:response:#{key}"
       redis_pool.with do |r|

@@ -6,7 +6,7 @@ class Idempo::MemoryBackend
     @store_mutex = Mutex.new
   end
 
-  class Store < Struct.new(:store_mutex, :response_store, :key)
+  class Store < Struct.new(:store_mutex, :response_store, :key, keyword_init: true)
     def lookup
       store_mutex.synchronize do
         response_store.lookup(key)
