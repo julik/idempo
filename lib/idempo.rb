@@ -6,7 +6,6 @@ require "json"
 require "measurometer"
 require "msgpack"
 require "zlib"
-require "set"
 require "rack"
 
 require "idempo/version"

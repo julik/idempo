@@ -1,3 +1,20 @@
+## 1.6.0
+
+- Drop support for Ruby 2.x and raise `required_ruby_version` to `>= 3.3.0` - the lowest Ruby
+  release still receiving maintenance. Ruby 2.7 has been end of life since March 2023, and
+  nothing has ever tested the 2.4-2.6 the gemspec previously claimed. Applications on older
+  Rubies resolve to Idempo 1.5.0, which already has the SQLite backend.
+- Test against the latest released Rails instead of pinning old versions. ActiveRecord and
+  railties are no longer pinned in `Appraisals` - every Rails in the previous matrix (6.1 and
+  7.1) had been end of life for a year or more, while the current release was not covered at
+  all. The two appraisals now cover the only thing Idempo declares a runtime dependency on:
+  Rack 2 versus Rack 3.
+- CI runs on Ruby 3.3 (the oldest maintained release) and Ruby 4.0.
+
+Note that ActiveRecord is not a runtime dependency of Idempo - it is required lazily by
+`ActiveRecordBackend`. Nothing in this release changes which databases or Rails versions the
+backend can work with, only which combinations are verified.
+
 ## 1.5.0
 
 - Add SQLite support to `ActiveRecordBackend`. SQLite has no advisory locks, so the backend now ships a
