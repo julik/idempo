@@ -7,50 +7,43 @@ on:
 env:
   BUNDLE_PATH: vendor/bundle
 
+# The suite has three independent dimensions - Ruby version, Rack major version, and which
+# datastore a backend talks to - and they do not interact. Only `idempo_spec.rb` touches the
+# Rack API at all; every backend spec is Rack-agnostic, and the datastore adapters care about
+# neither Ruby nor Rack. So these are covered separately rather than as a cross product, and
+# exactly one job needs database containers.
 jobs:
   lint:
     name: Code Style
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    strategy:
-      matrix:
-        ruby:
-          # The style target comes from .standard.yml, so one Ruby is enough here
-          - "3.4"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          # The style target comes from .standard.yml, so the Ruby here does not matter
+          ruby-version: "3.4"
           bundler-cache: true
-      - name: Rubocop Cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/rubocop_cache
-          key: ${{ runner.os }}-rubocop-${{ hashFiles('.rubocop.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-rubocop-
       - name: Standard (Lint)
         run: bundle exec rake standard
-  sqlite:
-    name: "Specs without a database server (SQLite)"
+
+  standalone:
+    name: "Ruby ${{ matrix.ruby }}, Rack ${{ matrix.rack }}.x"
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
       fail-fast: false
       matrix:
-        ruby:
-          # The oldest Ruby the gemspec allows, and the newest released one. On 3.0
-          # Bundler resolves the newest Rails that still runs there (7.1); on 4.0 it
-          # resolves the current release.
-          - "3.0"
-          - "4.0"
-    # Deliberately no `services:` here, and the mysql2/pg/redis clients are not even
-    # installed. SQLite users run Idempo on a box with no database server anywhere near
-    # it, and this job proves that actually works.
+        # The oldest Ruby the gemspec allows and the newest released one. Bundler resolves
+        # the newest Rails that runs on each, so this also covers ActiveRecord 7.1 and 8.1
+        # through the SQLite backend without naming a single Rails version anywhere.
+        ruby: ["3.0", "4.0"]
+        rack: ["2", "3"]
     env:
+      RACK_VERSION: "~> ${{ matrix.rack }}.0"
+      # No database server is involved, so the native clients are not even installed
       BUNDLE_WITHOUT: db_servers
     steps:
       - name: Checkout
@@ -60,22 +53,18 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-      - name: RSpec (SQLite backend, install generator and everything server-free)
-        run: bundle exec rspec --exclude-pattern "**/*{mysql,postgres,redis}*_spec.rb"
+          # Both Rack variants share a Gemfile, so keep their bundles in separate caches
+          cache-version: rack-${{ matrix.rack }}
+      - name: RSpec (middleware, memory and SQLite backends, install generator)
+        run: bundle exec rake spec:standalone
 
-  test:
-    name: "Specs (Rack 2 and 3, latest Rails)"
+  servers:
+    name: "Database backends (MySQL, PostgreSQL, Redis)"
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    strategy:
-      fail-fast: false
-      matrix:
-        ruby:
-          # The oldest Ruby the gemspec allows, and the newest released one. On 3.0
-          # Bundler resolves the newest Rails that still runs there (7.1); on 4.0 it
-          # resolves the current release.
-          - "3.0"
-          - "4.0"
+    # The only job that needs containers, and the only one that runs these specs. The
+    # adapters are independent of the Ruby and Rack dimensions covered above, so newest
+    # of everything is enough here.
     services:
       mysql:
         image: mysql:5.7
@@ -99,14 +88,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ matrix.ruby }}
+          ruby-version: "4.0"
           bundler-cache: true
-      - name: RSpec via Appraisal
-        run: "bundle exec appraisal install && bundle exec appraisal rspec"
+      - name: RSpec (ActiveRecord backend on MySQL and PostgreSQL, Redis backend)
+        run: bundle exec rake spec:servers
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306
