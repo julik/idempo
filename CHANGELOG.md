@@ -28,6 +28,9 @@
   connection-bound advisory locks are not.
 - A request rejected with `ConcurrentRequest` no longer frees the in-memory lock of the request it
   collided with, so a third request with the same key is rejected as well instead of running concurrently.
+- `TokenLock` keeps its lease tokens per request key, so the one instance passed via `lock:` serves
+  concurrent requests with different keys - on Puma threads or Falcon fibers - without one request's
+  lease being lost, or its lock row left behind, when another request takes a lock in the meantime.
 - A response is no longer written when the lock lease expired while the request was being served.
 
 ## 1.4.0
