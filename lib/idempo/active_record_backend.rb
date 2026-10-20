@@ -117,7 +117,6 @@ class Idempo::ActiveRecordBackend
 
     def acquire(connection, based_on_str)
       token = SecureRandom.hex(16)
-      now = Time.now.utc
       key = derive_lock_key(based_on_str)
 
       # A single statement, so the database applies it atomically. It inserts when no lock
@@ -125,11 +124,11 @@ class Idempo::ActiveRecordBackend
       # nothing at all when the lock is currently held by somebody else.
       sql = <<~SQL
         INSERT INTO idempo_locks (idempotent_request_key, lock_token, expire_at)
-        VALUES (#{connection.quote(key)}, #{connection.quote(token)}, #{connection.quote(now + @ttl_seconds)})
+        VALUES (#{connection.quote(key)}, #{connection.quote(token)}, #{self.class.now_sql(connection, plus_seconds: @ttl_seconds)})
         ON CONFLICT (idempotent_request_key) DO UPDATE SET
           lock_token = excluded.lock_token,
           expire_at = excluded.expire_at
-        WHERE idempo_locks.expire_at <= #{connection.quote(now)}
+        WHERE idempo_locks.expire_at <= #{self.class.now_sql(connection)}
       SQL
       did_acquire = connection.exec_update(sql, "Idempo lock acquire") == 1
       @tokens_mutex.synchronize { @tokens[key] = token } if did_acquire
@@ -154,13 +153,25 @@ class Idempo::ActiveRecordBackend
         SELECT 1 FROM idempo_locks
         WHERE idempotent_request_key = #{connection.quote(key)}
           AND lock_token = #{connection.quote(token)}
-          AND expire_at > #{connection.quote(Time.now.utc)}
+          AND expire_at > #{self.class.now_sql(connection)}
       SQL
       !row.nil?
     end
 
     def derive_lock_key(from_str)
       Digest::SHA1.base64digest(from_str)
+    end
+
+    # Several app hosts may share one PostgreSQL (behind PGBouncer, say) and their clocks need
+    # not agree, so there we let the database tell the time. clock_timestamp() and not now(),
+    # because now() stays put for the duration of a transaction. SQLite runs inside our own
+    # process and would read the same clock as Time.now does, so it gets the Ruby time.
+    def self.now_sql(connection, plus_seconds: 0)
+      if /^postgres/i.match?(connection.adapter_name)
+        "((clock_timestamp() AT TIME ZONE 'UTC') + make_interval(secs => %s))" % connection.quote(plus_seconds.to_f)
+      else
+        connection.quote(Time.now.utc + plus_seconds)
+      end
     end
   end
 
@@ -223,7 +234,7 @@ class Idempo::ActiveRecordBackend
     # Locks for keys which are never requested again would linger otherwise. Guarded
     # because the table may not exist yet on an installation which predates it.
     if lock_model.table_exists?
-      lock_model.where("expire_at < ?", Time.now).in_batches.delete_all
+      lock_model.where("expire_at < #{TokenLock.now_sql(lock_model.connection)}").in_batches.delete_all
     end
   end
 
