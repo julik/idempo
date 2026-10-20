@@ -26,6 +26,8 @@
 - `ActiveRecordBackend.new` accepts a `lock:` argument to override the lock implementation. Passing
   `TokenLock` makes the backend usable through a transaction-pooling proxy such as PGBouncer, where
   connection-bound advisory locks are not.
+- A request rejected with `ConcurrentRequest` no longer frees the in-memory lock of the request it
+  collided with, so a third request with the same key is rejected as well instead of running concurrently.
 - A response is no longer written when the lock lease expired while the request was being served.
 
 ## 1.4.0
