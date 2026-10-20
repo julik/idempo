@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 1.5.1
+
 - Raise `required_ruby_version` from 2.4 to 2.7. Idempo has needed Ruby 2.6 for a while (it uses an endless
   range, and `Struct.new(..., keyword_init: true)` which arrived in 2.5), so installing it on 2.4 or 2.5 succeeded
   and then failed to load. 2.7 is the oldest Ruby CI runs against, so it is the oldest version we actually know works.
