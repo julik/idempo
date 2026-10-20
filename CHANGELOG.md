@@ -33,6 +33,25 @@
   app hosts with clocks that disagree - all talking to one database through PGBouncer - agree on when a
   `TokenLock` lease and a stored response expire. `prune!` uses the same clock. SQLite keeps using the Ruby
   time, since it runs inside the process and would read the very same clock anyway.
+- Test against the latest released Rails instead of pinning old versions. Every Rails in the
+  previous matrix (6.1 and 7.1) had been end of life for a year or more, while the current
+  release was not covered at all. No Rails version is named anywhere now - Bundler resolves
+  the newest one that runs on the Ruby under test.
+- CI runs on Ruby 2.7 (the oldest the gemspec allows) and Ruby 4.0. On 2.7 Bundler resolves the
+  newest Rails that still runs there (7.1), on 4.0 it resolves the current release.
+- Drop the `appraisal` development dependency along with the `Appraisals` file and the
+  generated `gemfiles/` directory. Rack is pinned through a `RACK_VERSION` environment
+  variable read by the Gemfile instead. The checked-in appraisal lockfiles also pinned Bundler
+  to the version that generated them (2.1.4), which cannot run on Ruby 3.x or 4.x.
+- Split the suite into `rake spec:standalone` (needs no database server) and
+  `rake spec:servers` (needs MySQL, PostgreSQL or Redis), so the specs which need containers
+  run once rather than once per Ruby and Rack combination. `spec:mysql`, `spec:postgres` and
+  `spec:redis` run one server's specs each, and CI runs those in parallel, every job starting
+  only the container it needs.
+
+Note that ActiveRecord is not a runtime dependency of Idempo - it is required lazily by
+`ActiveRecordBackend`. Nothing in this release changes which databases or Rails versions the
+backend can work with, only which combinations are verified.
 
 ## 1.4.0
 
