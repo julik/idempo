@@ -14,8 +14,13 @@ class Idempo::MemoryLock
         @in_progress << request_key
       end
     end
-    yield
-  ensure
-    @requests_in_flight_mutex.synchronize { @in_progress.delete(request_key) }
+
+    # Only the request which got the key in may remove it again - a rejected request
+    # must leave the key of the request still in flight alone
+    begin
+      yield
+    ensure
+      @requests_in_flight_mutex.synchronize { @in_progress.delete(request_key) }
+    end
   end
 end
