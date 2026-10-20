@@ -33,17 +33,12 @@
   app hosts with clocks that disagree - all talking to one database through PGBouncer - agree on when a
   `TokenLock` lease and a stored response expire. `prune!` uses the same clock. SQLite keeps using the Ruby
   time, since it runs inside the process and would read the very same clock anyway.
-- Drop support for Ruby 2.x and raise `required_ruby_version` to `>= 3.0.0`. Ruby 2.7 has been
-  end of life since March 2023, and nothing has ever tested the 2.4-2.6 the gemspec previously
-  claimed. The floor stays at 3.0 rather than the oldest maintained Ruby on purpose - Idempo
-  itself needs nothing newer, and applications on Rails 7.x run on older Rubies. Applications
-  on Ruby 2.x resolve to Idempo 1.5.0, which already has the SQLite backend.
 - Test against the latest released Rails instead of pinning old versions. Every Rails in the
   previous matrix (6.1 and 7.1) had been end of life for a year or more, while the current
   release was not covered at all. No Rails version is named anywhere now - Bundler resolves
   the newest one that runs on the Ruby under test.
-- CI runs on Ruby 3.0 (the oldest the gemspec allows) and Ruby 4.0. On 3.0 Bundler resolves the
-  newest Rails that still runs there, on 4.0 it resolves the current release.
+- CI runs on Ruby 2.7 (the oldest the gemspec allows) and Ruby 4.0. On 2.7 Bundler resolves the
+  newest Rails that still runs there (7.1), on 4.0 it resolves the current release.
 - Drop the `appraisal` development dependency along with the `Appraisals` file and the
   generated `gemfiles/` directory. Rack is pinned through a `RACK_VERSION` environment
   variable read by the Gemfile instead. The checked-in appraisal lockfiles also pinned Bundler

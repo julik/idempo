@@ -39,7 +39,7 @@ jobs:
         # The oldest Ruby the gemspec allows and the newest released one. Bundler resolves
         # the newest Rails that runs on each, so this also covers ActiveRecord 7.1 and 8.1
         # through the SQLite backend without naming a single Rails version anywhere.
-        ruby: ["3.0", "4.0"]
+        ruby: ["2.7", "4.0"]
         rack: ["2", "3"]
     env:
       RACK_VERSION: "~> ${{ matrix.rack }}.0"
