@@ -29,10 +29,10 @@
   concurrent requests with different keys - on Puma threads or Falcon fibers - without one request's
   lease being lost, or its lock row left behind, when another request takes a lock in the meantime.
 - A response is no longer written when the lock lease expired while the request was being served.
-- On PostgreSQL the `TokenLock` takes the time from the database instead of from the Ruby process, so app
-  hosts with clocks that disagree - all talking to one database through PGBouncer - agree on when a lease
-  expires. `prune!` uses the same clock for lock rows. SQLite keeps using the Ruby time, since it runs inside
-  the process and would read the very same clock anyway.
+- On PostgreSQL `ActiveRecordBackend` takes the time from the database instead of from the Ruby process, so
+  app hosts with clocks that disagree - all talking to one database through PGBouncer - agree on when a
+  `TokenLock` lease and a stored response expire. `prune!` uses the same clock. SQLite keeps using the Ruby
+  time, since it runs inside the process and would read the very same clock anyway.
 
 ## 1.4.0
 

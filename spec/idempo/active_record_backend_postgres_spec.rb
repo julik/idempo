@@ -32,6 +32,21 @@ RSpec.describe Idempo::ActiveRecordBackend do
   end
 
   it_should_behave_like "a backend for Idempo"
+
+  it "expires stored responses by the clock of the database, not the one of the process" do
+    value = Random.new(RSpec.configuration.seed).bytes(128)
+
+    allow(Time).to receive(:now).and_return(Time.now - 3600)
+    subject.with_idempotency_key("clock-response-key") do |store|
+      store.store(data: value, ttl: 300)
+    end
+
+    allow(Time).to receive(:now).and_return(Time.now + 7200)
+    subject.prune!
+    subject.with_idempotency_key("clock-response-key") do |store|
+      expect(store.lookup).to eq(value)
+    end
+  end
   describe "the TokenLock" do
     it_should_behave_like "a TokenLock"
 

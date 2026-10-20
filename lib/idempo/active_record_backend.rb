@@ -33,14 +33,39 @@ class Idempo::ActiveRecordBackend
     end
   end
 
+  # Several app hosts may share one PostgreSQL (behind PGBouncer, say) and their clocks need
+  # not agree, so there we let the database tell the time. clock_timestamp() and not now(),
+  # because now() stays put for the duration of a transaction. SQLite runs inside our own
+  # process and would read the same clock as Time.now does, so it gets the Ruby time.
+  def self.now_sql(connection, plus_seconds: 0)
+    if postgres?(connection)
+      "((clock_timestamp() AT TIME ZONE 'UTC') + make_interval(secs => %s))" % connection.quote(plus_seconds.to_f)
+    else
+      connection.quote(Time.now.utc + plus_seconds)
+    end
+  end
+
+  # For the few places where ActiveRecord wants a Time and not an SQL expression. The epoch
+  # comes back as a plain number, so there is no timezone for anybody to reinterpret
+  def self.now(connection)
+    return Time.now.utc unless postgres?(connection)
+    Time.at(connection.select_value("SELECT EXTRACT(EPOCH FROM clock_timestamp())").to_r).utc
+  end
+
+  def self.postgres?(connection)
+    /^postgres/i.match?(connection.adapter_name)
+  end
+
   class Store < Struct.new(:key, :model, :verify_lock_held)
     def lookup
-      model.where(idempotent_request_key: key).where("expire_at > ?", Time.now).first&.idempotent_response_payload
+      model.where(idempotent_request_key: key)
+        .where("expire_at > #{Idempo::ActiveRecordBackend.now_sql(model.connection)}")
+        .first&.idempotent_response_payload
     end
 
     def store(data:, ttl:)
       # MySQL does not support datetime with subsecont precision, so ceil() it is
-      expire_at = Time.now.utc + ttl.ceil
+      expire_at = Idempo::ActiveRecordBackend.now(model.connection) + ttl.ceil
       model.transaction do
         # The DELETE comes first on purpose. On SQLite it takes the database write lock
         # at the very start of the transaction, so the read done by verify_lock_held
@@ -124,11 +149,11 @@ class Idempo::ActiveRecordBackend
       # nothing at all when the lock is currently held by somebody else.
       sql = <<~SQL
         INSERT INTO idempo_locks (idempotent_request_key, lock_token, expire_at)
-        VALUES (#{connection.quote(key)}, #{connection.quote(token)}, #{self.class.now_sql(connection, plus_seconds: @ttl_seconds)})
+        VALUES (#{connection.quote(key)}, #{connection.quote(token)}, #{Idempo::ActiveRecordBackend.now_sql(connection, plus_seconds: @ttl_seconds)})
         ON CONFLICT (idempotent_request_key) DO UPDATE SET
           lock_token = excluded.lock_token,
           expire_at = excluded.expire_at
-        WHERE idempo_locks.expire_at <= #{self.class.now_sql(connection)}
+        WHERE idempo_locks.expire_at <= #{Idempo::ActiveRecordBackend.now_sql(connection)}
       SQL
       did_acquire = connection.exec_update(sql, "Idempo lock acquire") == 1
       @tokens_mutex.synchronize { @tokens[key] = token } if did_acquire
@@ -153,25 +178,13 @@ class Idempo::ActiveRecordBackend
         SELECT 1 FROM idempo_locks
         WHERE idempotent_request_key = #{connection.quote(key)}
           AND lock_token = #{connection.quote(token)}
-          AND expire_at > #{self.class.now_sql(connection)}
+          AND expire_at > #{Idempo::ActiveRecordBackend.now_sql(connection)}
       SQL
       !row.nil?
     end
 
     def derive_lock_key(from_str)
       Digest::SHA1.base64digest(from_str)
-    end
-
-    # Several app hosts may share one PostgreSQL (behind PGBouncer, say) and their clocks need
-    # not agree, so there we let the database tell the time. clock_timestamp() and not now(),
-    # because now() stays put for the duration of a transaction. SQLite runs inside our own
-    # process and would read the same clock as Time.now does, so it gets the Ruby time.
-    def self.now_sql(connection, plus_seconds: 0)
-      if /^postgres/i.match?(connection.adapter_name)
-        "((clock_timestamp() AT TIME ZONE 'UTC') + make_interval(secs => %s))" % connection.quote(plus_seconds.to_f)
-      else
-        connection.quote(Time.now.utc + plus_seconds)
-      end
     end
   end
 
@@ -230,11 +243,11 @@ class Idempo::ActiveRecordBackend
 
   # Deletes expired cached Idempo responses from the database, in batches
   def prune!
-    model.where("expire_at < ?", Time.now).in_batches.delete_all
+    model.where("expire_at < #{self.class.now_sql(model.connection)}").in_batches.delete_all
     # Locks for keys which are never requested again would linger otherwise. Guarded
     # because the table may not exist yet on an installation which predates it.
     if lock_model.table_exists?
-      lock_model.where("expire_at < #{TokenLock.now_sql(lock_model.connection)}").in_batches.delete_all
+      lock_model.where("expire_at < #{self.class.now_sql(lock_model.connection)}").in_batches.delete_all
     end
   end
 
