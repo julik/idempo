@@ -3,6 +3,11 @@
 - Raise `required_ruby_version` from 2.4 to 2.7. Idempo has needed Ruby 2.6 for a while (it uses an endless
   range, and `Struct.new(..., keyword_init: true)` which arrived in 2.5), so installing it on 2.4 or 2.5 succeeded
   and then failed to load. 2.7 is the oldest Ruby CI runs against, so it is the oldest version we actually know works.
+- Fix an off-by-one in `ResponseStore#prune` (used by `MemoryBackend`): the expiry handle at the pruning
+  boundary was deleted but also kept, so one already-expired handle stayed in the store and was pruned
+  again on every subsequent call.
+- Fix `ResponseStore#prune` leaking a response whose `expire_at` equals the prune time: its expiry handle was
+  removed but the response itself was kept, and stayed in memory until its key was looked up or overwritten.
 
 ## 1.5.0
 
