@@ -24,6 +24,7 @@ RSpec.describe Idempo::ResponseStore do
     subject.prune
 
     expect(expiries).to eq([105.0, 104.0])
+    expect(subject.instance_variable_get(:@values).keys).to contain_exactly("key-5", "key-4")
     expect(subject.lookup("key-5")).to eq("response-5")
     expect(subject.lookup("key-4")).to eq("response-4")
     expect(subject.lookup("key-2")).to be_nil
