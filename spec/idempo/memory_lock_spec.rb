@@ -38,4 +38,12 @@ RSpec.describe Idempo::MemoryLock do
       request_a.join
     end
   end
+
+  it "frees the key when the request holding it raises" do
+    lock = described_class.new
+
+    expect { lock.with("k") { raise ArgumentError } }.to raise_error(ArgumentError)
+
+    expect { |b| lock.with("k", &b) }.to yield_control
+  end
 end
