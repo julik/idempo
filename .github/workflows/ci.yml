@@ -59,29 +59,34 @@ jobs:
         run: bundle exec rake spec:standalone
 
   servers:
-    name: "Database backends (MySQL, PostgreSQL, Redis)"
+    name: "Database backend (${{ matrix.backend }})"
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
-    # The only job that needs containers, and the only one that runs these specs. The
+    # The only jobs that need containers, and the only ones that run these specs. The
     # adapters are independent of the Ruby and Rack dimensions covered above, so newest
-    # of everything is enough here.
+    # of everything is enough here. The backends do not depend on each other either, so
+    # each runs in its own job - a service whose image is blank does not get started.
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [mysql, postgres, redis]
     services:
       mysql:
-        image: mysql:5.7
+        image: ${{ matrix.backend == 'mysql' && 'mysql:5.7' || '' }}
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: yes
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
       postgres:
-        image: postgres
+        image: ${{ matrix.backend == 'postgres' && 'postgres' || '' }}
         env:
           POSTGRES_PASSWORD: postgres
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
         ports:
           - 5432:5432
       redis:
-        image: redis
+        image: ${{ matrix.backend == 'redis' && 'redis' || '' }}
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
         ports:
           - 6379:6379
@@ -93,8 +98,8 @@ jobs:
         with:
           ruby-version: "4.0"
           bundler-cache: true
-      - name: RSpec (ActiveRecord backend on MySQL and PostgreSQL, Redis backend)
-        run: bundle exec rake spec:servers
+      - name: RSpec (${{ matrix.backend }})
+        run: bundle exec rake spec:${{ matrix.backend }}
         env:
           MYSQL_HOST: 127.0.0.1
           MYSQL_PORT: 3306

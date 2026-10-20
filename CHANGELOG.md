@@ -45,7 +45,9 @@
   to the version that generated them (2.1.4), which cannot run on Ruby 3.x or 4.x.
 - Split the suite into `rake spec:standalone` (needs no database server) and
   `rake spec:servers` (needs MySQL, PostgreSQL or Redis), so the specs which need containers
-  run once rather than once per Ruby and Rack combination.
+  run once rather than once per Ruby and Rack combination. `spec:mysql`, `spec:postgres` and
+  `spec:redis` run one server's specs each, and CI runs those in parallel, every job starting
+  only the container it needs.
 
 Note that ActiveRecord is not a runtime dependency of Idempo - it is required lazily by
 `ActiveRecordBackend`. Nothing in this release changes which databases or Rails versions the
