@@ -5,12 +5,9 @@
   and then failed to load. 2.7 is the oldest Ruby CI runs against, so it is the oldest version we actually know works.
 - Fix an off-by-one in `ResponseStore#prune` (used by `MemoryBackend`): the expiry handle at the pruning
   boundary was deleted but also kept, so one already-expired handle stayed in the store and was pruned
-  again on every subsequent call.
-- Fix `ResponseStore#prune` leaking a response whose `expire_at` equals the prune time: its expiry handle was
-  removed but the response itself was kept, and stayed in memory until its key was looked up or overwritten.
-
-## 1.5.0
-
+  again on every subsequent call. It also no longer leaks a response whose `expire_at` equals the prune time:
+  its expiry handle was removed but the response itself was kept, and stayed in memory until its key was
+  looked up or overwritten.
 - Add SQLite support to `ActiveRecordBackend`. SQLite has no advisory locks, so the backend now ships a
   `TokenLock` - a lease lock built on an atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE` into a new
   `idempo_locks` table, with a random fencing token and an expiry. It is the same scheme the `RedisBackend`
