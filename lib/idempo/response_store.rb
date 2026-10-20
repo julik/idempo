@@ -35,20 +35,20 @@ class Idempo::ResponseStore
 
   private
 
-  def binary_insert(array, item, &property_getter)
+  def binary_insert(array, item)
     at_i = array.bsearch_index do |stored_item|
       yield(stored_item) <= yield(item)
     end
     at_i ? array.insert(at_i, item) : array.push(item)
   end
 
-  def remove_lower_than(array, threshold_value, &property_getter)
+  def remove_lower_than(array, threshold_value)
     at_i = array.bsearch_index do |stored_item|
       yield(stored_item) <= threshold_value
     end
     if at_i
       array[at_i..array.length].tap do |_deleted_items|
-        array.replace(array[0..at_i])
+        array.replace(array[0...at_i])
       end
     else
       []
