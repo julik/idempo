@@ -45,7 +45,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "activerecord"
   spec.add_development_dependency "sqlite3"
   spec.add_development_dependency "railties"
-  spec.add_development_dependency "standard"
+  spec.add_development_dependency "standard", "1.37.0" # The last version which installs on Ruby 2.7
 
   # For more information and examples about making a new gem, checkout our
   # guide at: https://bundler.io/guides/creating_gem.html

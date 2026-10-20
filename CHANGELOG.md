@@ -48,6 +48,9 @@
   run once rather than once per Ruby and Rack combination. `spec:mysql`, `spec:postgres` and
   `spec:redis` run one server's specs each, and CI runs those in parallel, every job starting
   only the container it needs.
+- Pin `standard` to 1.37.0, the last version which installs on Ruby 2.7, so every Ruby in CI lints with the same
+  rules. Remove the unused `.rubocop.yml`, which inherited from `wetransfer_style` - a gem Idempo does not depend on.
+- Add a `CONTRIBUTING.md`.
 
 Note that ActiveRecord is not a runtime dependency of Idempo - it is required lazily by
 `ActiveRecordBackend`. Nothing in this release changes which databases or Rails versions the
