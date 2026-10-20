@@ -105,10 +105,14 @@ class Idempo::ActiveRecordBackend
   # just expressed as one INSERT ... ON CONFLICT DO UPDATE ... WHERE, which the database
   # applies atomically. Unlike an advisory lock this one is not bound to a connection,
   # which also makes it usable through a transaction-pooling proxy such as PGBouncer.
+  #
+  # One instance serves every request of the process when passed via `lock:`, and requests
+  # with different keys run concurrently - so the tokens are kept per key.
   class TokenLock
     def initialize(ttl_seconds: LOCK_TTL_SECONDS)
       @ttl_seconds = ttl_seconds
-      @token = nil
+      @tokens = {}
+      @tokens_mutex = Mutex.new
     end
 
     def acquire(connection, based_on_str)
@@ -128,26 +132,27 @@ class Idempo::ActiveRecordBackend
         WHERE idempo_locks.expire_at <= #{connection.quote(now)}
       SQL
       did_acquire = connection.exec_update(sql, "Idempo lock acquire") == 1
-      @token = token if did_acquire
+      @tokens_mutex.synchronize { @tokens[key] = token } if did_acquire
       did_acquire
     end
 
     def release(connection, based_on_str)
-      token = @token or return
-      @token = nil
+      key = derive_lock_key(based_on_str)
+      token = @tokens_mutex.synchronize { @tokens.delete(key) } or return
       connection.exec_delete(<<~SQL, "Idempo lock release")
         DELETE FROM idempo_locks
-        WHERE idempotent_request_key = #{connection.quote(derive_lock_key(based_on_str))}
+        WHERE idempotent_request_key = #{connection.quote(key)}
           AND lock_token = #{connection.quote(token)}
       SQL
     end
 
     # Tells whether the lease taken in `acquire` is still ours and has not expired yet
     def held?(connection, based_on_str)
-      token = @token or return false
+      key = derive_lock_key(based_on_str)
+      token = @tokens_mutex.synchronize { @tokens[key] } or return false
       row = connection.select_value(<<~SQL, "Idempo lock check")
         SELECT 1 FROM idempo_locks
-        WHERE idempotent_request_key = #{connection.quote(derive_lock_key(based_on_str))}
+        WHERE idempotent_request_key = #{connection.quote(key)}
           AND lock_token = #{connection.quote(token)}
           AND expire_at > #{connection.quote(Time.now.utc)}
       SQL
@@ -162,7 +167,8 @@ class Idempo::ActiveRecordBackend
   # Pass `lock:` to override the lock implementation Idempo picks for your database - for
   # example to use the TokenLock on PostgreSQL behind PGBouncer, where advisory locks are
   # not usable. The object needs to respond to `acquire(connection, key)` and
-  # `release(connection, key)`, and may respond to `held?(connection, key)`.
+  # `release(connection, key)`, and may respond to `held?(connection, key)`. The same
+  # object serves every request, so any state it keeps must be safe to share between them.
   def initialize(lock: nil)
     require "active_record"
     require "securerandom"

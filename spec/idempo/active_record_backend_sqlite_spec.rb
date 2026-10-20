@@ -96,6 +96,32 @@ RSpec.describe Idempo::ActiveRecordBackend do
         expect(store.lookup).to eq(value)
       end
     end
+
+    # One instance passed via `lock:` serves every request of the process. Requests with
+    # different keys run concurrently (the MemoryLock only rejects a repeated key), so the
+    # lease of one key must not be lost when another key gets acquired in the meantime.
+    it "keeps the lease of every key when one instance is shared by concurrent requests" do
+      rng = Random.new(RSpec.configuration.seed)
+      first_value, second_value = rng.bytes(128), rng.bytes(128)
+      lock = described_class::TokenLock.new
+      backend = described_class.new(lock: lock)
+
+      backend.with_idempotency_key("first-key") do |first_store|
+        backend.with_idempotency_key("second-key") do |second_store|
+          expect(lock.held?(connection, "first-key")).to eq(true)
+          expect(lock.held?(connection, "second-key")).to eq(true)
+
+          second_store.store(data: second_value, ttl: 300)
+          expect(second_store.lookup).to eq(second_value)
+        end
+
+        expect(lock.held?(connection, "first-key")).to eq(true)
+        first_store.store(data: first_value, ttl: 300)
+        expect(first_store.lookup).to eq(first_value)
+      end
+
+      expect(backend.lock_model.count).to eq(0)
+    end
   end
 
   # An existing installation upgrades the gem before it gets around to running the new
