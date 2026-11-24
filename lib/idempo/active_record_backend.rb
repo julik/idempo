@@ -53,7 +53,7 @@ class Idempo::ActiveRecordBackend
   end
 
   def self.postgres?(connection)
-    /^postgres/i.match?(connection.adapter_name)
+    /^postg(res|is)/i.match?(connection.adapter_name)
   end
 
   class Store < Struct.new(:key, :model, :verify_lock_held)
@@ -64,7 +64,7 @@ class Idempo::ActiveRecordBackend
     end
 
     def store(data:, ttl:)
-      # MySQL does not support datetime with subsecont precision, so ceil() it is
+      # MySQL does not support datetime with subsecond precision, so ceil() it is
       expire_at = Idempo::ActiveRecordBackend.now(model.connection) + ttl.ceil
       model.transaction do
         # The DELETE comes first on purpose. On SQLite it takes the database write lock
@@ -256,7 +256,7 @@ class Idempo::ActiveRecordBackend
   def lock_implementation_for_connection(connection)
     if /^mysql2/i.match?(connection.adapter_name)
       MysqlLock.new
-    elsif /^postgres/i.match?(connection.adapter_name)
+    elsif /^postg(res|is)/i.match?(connection.adapter_name)
       PostgresLock.new
     elsif /^sqlite/i.match?(connection.adapter_name)
       TokenLock.new
